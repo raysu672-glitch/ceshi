@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>学习历史 — 雅思训练平台</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg-dark: #0a0e1a;
+    --bg-card: #141828;
+    --bg-card2: #1a1f36;
+    --purple: #8b5cf6;
+    --purple-glow: rgba(139,92,246,0.4);
+    --green: #22d3a7;
+    --green-glow: rgba(34,211,167,0.3);
+    --red: #f43f5e;
+    --gold: #fbbf24;
+    --blue: #38bdf8;
+    --blue-glow: rgba(56,189,248,0.3);
+    --text: #e2e8f0;
+    --text-dim: #94a3b8;
+    --text-dimmer: #64748b;
+    --border: rgba(255,255,255,0.08);
+  }
+  body {
+    font-family: "Segoe UI", "PingFang SC", sans-serif;
+    background: var(--bg-dark);
+    color: var(--text);
+    min-height: 100vh;
+  }
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background:
+      radial-gradient(ellipse at 20% 50%, rgba(139,92,246,0.06) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 80%, rgba(34,211,167,0.04) 0%, transparent 50%);
+    z-index: 0; pointer-events: none;
+  }
+
+  /* Header */
+  .page-header {
+    background: rgba(20,24,40,0.85);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 24px;
+    display: flex; align-items: center; gap: 14px;
+    position: sticky; top: 0; z-index: 100;
+  }
+  .logo-badge {
+    width: 38px; height: 38px;
+    background: linear-gradient(135deg, var(--purple), #6d28d9);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 16px; font-weight: 700; flex-shrink: 0;
+  }
+  .page-header h1 { font-size: 16px; font-weight: 600; }
+  .student-id-tag {
+    margin-left: auto;
+    background: rgba(56,189,248,0.1);
+    border: 1px solid rgba(56,189,248,0.2);
+    padding: 4px 12px; border-radius: 20px;
+    font-size: 11px; color: var(--blue); font-family: monospace;
+  }
+  .back-link {
+    color: var(--text-dim); text-decoration: none;
+    font-size: 13px; padding: 6px 14px; border: 1px solid var(--border);
+    border-radius: 8px; transition: all 0.2s;
+  }
+  .back-link:hover { color: var(--text); border-color: var(--purple); }
+
+  /* Tabs */
+  .tab-bar {
+    display: flex; gap: 0; border-bottom: 1px solid var(--border);
+    background: rgba(20,24,40,0.5); padding: 0 24px;
+    overflow-x: auto;
+  }
+  .tab-btn {
+    padding: 12px 18px; font-size: 13px; font-weight: 500;
+    color: var(--text-dimmer); background: none; border: none;
+    border-bottom: 2px solid transparent; cursor: pointer; transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .tab-btn:hover { color: var(--text-dim); }
+  .tab-btn.active { color: var(--purple); border-bottom-color: var(--purple); }
+  .tab-btn .due-badge {
+    display: inline-block;
+    background: var(--red);
+    color: #fff;
+    font-size: 10px;
+    padding: 1px 6px;
+    border-radius: 10px;
+    margin-left: 4px;
+    font-weight: 700;
+  }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  .container { max-width: 900px; margin: 0 auto; padding: 24px 20px; position: relative; z-index: 1; }
+
+  /* Stats row */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .stat-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    text-align: center;
+  }
+  .stat-value { font-size: 26px; font-weight: 700; line-height: 1.1; }
+  .stat-value.green { color: var(--green); }
+  .stat-value.gold { color: var(--gold); }
+  .stat-value.purple { color: var(--purple); }
+  .stat-value.blue { color: var(--blue); }
+  .stat-value.red { color: var(--red); }
+  .stat-label {
+    font-size: 11px; color: var(--text-dimmer); margin-top: 6px;
+    text-transform: uppercase; letter-spacing: 1px;
+  }
+
+  /* Card */
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+  .card-title {
+    font-size: 14px; font-weight: 600; margin-bottom: 16px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .card-title .icon { font-size: 18px; }
+
+  /* Profile badge */
+  .profile-badge {
+    display: inline-block;
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 600;
+    margin-right: 8px;
+  }
+  .profile-badge.cautious { background: rgba(34,211,167,0.15); color: var(--green); border: 1px solid rgba(34,211,167,0.3); }
+  .profile-badge.impulsive { background: rgba(244,63,94,0.15); color: var(--red); border: 1px solid rgba(244,63,94,0.3); }
+  .profile-badge.balanced { background: rgba(56,189,248,0.15); color: var(--blue); border: 1px solid rgba(56,189,248,0.3); }
+  .profile-advice { font-size: 13px; color: var(--text-dim); margin-top: 8px; line-height: 1.6; }
+
+  /* Chart */
+  .chart-area { width: 100%; height: 200px; position: relative; }
+  .chart-area canvas { width: 100% !important; height: 100% !important; }
+
+  /* Session list */
+  .session-item {
+    display: flex; align-items: center; gap: 14px;
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+  .session-item:last-child { border-bottom: none; }
+  .session-date {
+    width: 80px; font-size: 12px; color: var(--text-dimmer);
+    flex-shrink: 0;
+  }
+  .session-bar-wrap {
+    flex: 1; height: 20px; background: rgba(255,255,255,0.04);
+    border-radius: 4px; overflow: hidden; display: flex;
+  }
+  .session-bar-correct { height: 100%; background: rgba(34,211,167,0.6); }
+  .session-bar-wrong { height: 100%; background: rgba(244,63,94,0.5); }
+  .session-meta {
+    width: 100px; font-size: 12px; color: var(--text-dim);
+    text-align: right; flex-shrink: 0;
+  }
+
+  /* Wrong answers list */
+  .wrong-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+  .wrong-item:last-child { border-bottom: none; }
+  .wrong-key {
+    font-size: 14px; font-weight: 500;
+    color: var(--text);
+    flex: 1;
+  }
+  .wrong-time {
+    font-size: 11px; color: var(--text-dimmer);
+  }
+  .wrong-icon { font-size: 16px; }
+
+  /* Review items */
+  .review-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    transition: background 0.2s;
+  }
+  .review-item:hover { background: rgba(255,255,255,0.02); }
+  .review-item:last-child { border-bottom: none; }
+  .review-item .retention-bar {
+    width: 60px; height: 6px; background: rgba(255,255,255,0.06);
+    border-radius: 3px; overflow: hidden; flex-shrink: 0;
+  }
+  .review-item .retention-fill {
+    height: 100%; border-radius: 3px;
+    transition: width 0.4s ease;
+  }
+  .review-item .item-key {
+    font-size: 14px; font-weight: 500; color: var(--text);
+    flex: 1;
+  }
+  .review-item .item-meta {
+    font-size: 11px; color: var(--text-dimmer); white-space: nowrap;
+  }
+  .review-item .urgency-badge {
+    padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 600;
+    flex-shrink: 0;
+  }
+  .urgency-badge.overdue { background: rgba(244,63,94,0.15); color: var(--red); border: 1px solid rgba(244,63,94,0.3); }
+  .urgency-badge.today { background: rgba(251,191,36,0.15); color: var(--gold); border: 1px solid rgba(251,191,36,0.3); }
+  .urgency-badge.soon { background: rgba(56,189,248,0.15); color: var(--blue); border: 1px solid rgba(56,189,248,0.3); }
+  .urgency-badge.new { background: rgba(139,92,246,0.15); color: var(--purple); border: 1px solid rgba(139,92,246,0.3); }
+
+  /* Schedule row */
+  .schedule-row {
+    display: flex; align-items: center; gap: 14px;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+  .schedule-row:last-child { border-bottom: none; }
+  .schedule-date {
+    width: 70px; font-size: 13px; color: var(--text-dim);
+    font-weight: 500; flex-shrink: 0;
+  }
+  .schedule-bar-wrap {
+    flex: 1; height: 24px; background: rgba(255,255,255,0.04);
+    border-radius: 6px; overflow: hidden; position: relative;
+  }
+  .schedule-bar {
+    height: 100%; border-radius: 6px;
+    display: flex; align-items: center; padding-left: 8px;
+    font-size: 11px; font-weight: 600; color: #fff;
+    transition: width 0.5s ease;
+  }
+  .schedule-bar.overdue { background: rgba(244,63,94,0.5); }
+  .schedule-bar.today { background: rgba(251,191,36,0.5); }
+  .schedule-bar.upcoming { background: rgba(56,189,248,0.4); }
+  .schedule-meta {
+    width: 50px; font-size: 12px; color: var(--text-dim);
+    text-align: right; flex-shrink: 0;
+  }
+
+  /* Memory ring chart */
+  .memory-ring-container {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    padding: 8px 0;
+  }
+  .memory-ring-canvas { flex-shrink: 0; }
+  .memory-ring-legend { font-size: 13px; line-height: 2; }
+  .memory-ring-legend .dot {
+    display: inline-block; width: 10px; height: 10px;
+    border-radius: 50%; margin-right: 6px; vertical-align: middle;
+  }
+
+  /* CTA */
+  .cta-link {
+    display: inline-block; margin-top: 16px;
+    padding: 10px 24px; border-radius: 10px;
+    background: linear-gradient(135deg, var(--purple), #6d28d9);
+    color: #fff; text-decoration: none; font-weight: 600;
+    font-size: 14px; transition: transform 0.15s;
+  }
+  .cta-link:hover { transform: scale(1.03); }
+
+  /* Review start button */
+  .review-start-btn {
+    display: block; width: 100%; max-width: 400px; margin: 20px auto 0;
+    padding: 14px 24px; border-radius: 12px;
+    background: linear-gradient(135deg, var(--gold), #f59e0b);
+    color: #1a1a1a; font-size: 15px; font-weight: 700;
+    border: none; cursor: pointer; transition: all 0.2s;
+    text-align: center;
+    box-shadow: 0 0 20px rgba(251,191,36,0.3);
+  }
+  .review-start-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 25px rgba(251,191,36,0.4); }
+  .review-start-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: none; }
+
+  /* Empty state */
+  .empty-state {
+    text-align: center; padding: 48px 20px;
+    color: var(--text-dimmer); font-size: 14px;
+  }
+  .empty-state .icon { font-size: 40px; display: block; margin-bottom: 12px; }
+
+  @media (max-width: 640px) {
+    .stats-row { grid-template-columns: repeat(2, 1fr); }
+    .memory-ring-container { flex-direction: column; }
+    .tab-btn { padding: 10px 14px; font-size: 12px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <div class="logo-badge">📊</div>
+  <h1>学习历史</h1>
+  <span class="student-id-tag" id="sidTag"></span>
+  <a class="back-link" href="../index.html">← 返回平台</a>
+</div>
+
+<div class="tab-bar">
+  <button class="tab-btn active" data-tab="overview">📈 概览</button>
+  <button class="tab-btn" data-tab="review">🧠 复习计划</button>
+  <button class="tab-btn" data-tab="sessions">🕐 练习记录</button>
+  <button class="tab-btn" data-tab="wrong">❌ 错题本</button>
+</div>
+
+<div class="container">
+
+  <!-- Tab: Overview -->
+  <div class="tab-panel active" id="tab-overview">
+    <div class="stats-row" id="overviewStats">
+      <div class="stat-card"><div class="stat-value green" id="ov-correct">—</div><div class="stat-label">正确</div></div>
+      <div class="stat-card"><div class="stat-value red" id="ov-wrong">—</div><div class="stat-label">错误</div></div>
+      <div class="stat-card"><div class="stat-value gold" id="ov-acc">—</div><div class="stat-label">正确率</div></div>
+      <div class="stat-card"><div class="stat-value purple" id="ov-combo">—</div><div class="stat-label">最高连击</div></div>
+      <div class="stat-card"><div class="stat-value blue" id="ov-sessions">—</div><div class="stat-label">练习轮次</div></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="icon">🧠</span> 学习画像</div>
+      <div id="profileSection">
+        <div class="empty-state"><span class="icon">📭</span>开始练习后查看你的学习画像</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="icon">📈</span> 每日正确率趋势</div>
+      <div class="chart-area"><canvas id="trendChart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Tab: Review Plan -->
+  <div class="tab-panel" id="tab-review">
+    <!-- Memory overview -->
+    <div class="stats-row">
+      <div class="stat-card"><div class="stat-value purple" id="rv-total">—</div><div class="stat-label">已学词组</div></div>
+      <div class="stat-card"><div class="stat-value green" id="rv-mastered">—</div><div class="stat-label">已掌握</div></div>
+      <div class="stat-card"><div class="stat-value gold" id="rv-learning">—</div><div class="stat-label">学习中</div></div>
+      <div class="stat-card"><div class="stat-value red" id="rv-due">—</div><div class="stat-label">待复习</div></div>
+    </div>
+
+    <!-- Memory ring chart -->
+    <div class="card">
+      <div class="card-title"><span class="icon">🎯</span> 记忆状态分布</div>
+      <div class="memory-ring-container">
+        <canvas id="memoryRing" width="160" height="160" class="memory-ring-canvas"></canvas>
+        <div class="memory-ring-legend" id="memoryLegend">
+          加载中…
+        </div>
+      </div>
+    </div>
+
+    <!-- Due items -->
+    <div class="card">
+      <div class="card-title"><span class="icon">🔔</span> 待复习词组 <span id="dueCount" style="font-size:12px;color:var(--text-dimmer);font-weight:400;margin-left:8px;"></span></div>
+      <div id="dueList">
+        <div class="empty-state"><span class="icon">📭</span>暂无待复习词组</div>
+      </div>
+      <button class="review-start-btn" id="reviewStartBtn" disabled onclick="startReview()">
+        🧠 开始错题专练
+      </button>
+    </div>
+
+    <!-- Schedule -->
+    <div class="card">
+      <div class="card-title"><span class="icon">📅</span> 7天复习日程</div>
+      <div id="scheduleList">
+        <div class="empty-state"><span class="icon">📭</span>暂无复习日程</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab: Sessions -->
+  <div class="tab-panel" id="tab-sessions">
+    <div class="card">
+      <div class="card-title"><span class="icon">🕐</span> 练习记录</div>
+      <div id="sessionsList">
+        <div class="empty-state"><span class="icon">📭</span>暂无练习记录</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab: Wrong answers -->
+  <div class="tab-panel" id="tab-wrong">
+    <div class="card">
+      <div class="card-title"><span class="icon">❌</span> 错题本</div>
+      <div id="wrongList">
+        <div class="empty-state"><span class="icon">🎉</span>暂无错题，继续保持！</div>
+      </div>
+    </div>
+    <a class="cta-link" href="../modules/synonym/index.html?mode=review">🔄 去练习同义替换</a>
+  </div>
+
+</div>
+
+<script src="../shared/tracker.js"></script>
+<script>
+  // ── Init ──
+  async function initStudentPage() {
+    // 登录拦截
+    if (!tracker.isLoggedIn()) {
+      window.location.href = '../index.html';
+      return;
+    }
+
+    const studentId = localStorage.getItem('ielts_student_id') || '—';
+    const studentName = localStorage.getItem('ielts_student_name') || '';
+    const studentClass = localStorage.getItem('ielts_student_class') || '';
+    const sidEl = document.getElementById('sidTag');
+    if (studentName) {
+      sidEl.textContent = studentClass ? `${studentName} · ${studentClass}` : studentName;
+      sidEl.style.fontFamily = 'inherit';
+    } else {
+      sidEl.textContent = studentId;
+    }
+
+    await tracker.init({ module: 'student' });
+
+    await loadOverview();
+    await loadReviewPlan();
+    await loadSessions();
+    await loadWrongAnswers();
+  }
+
+  // ── Tabs ──
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+    });
+  });
+
+  // ── Overview ──
+  async function loadOverview() {
+    const profile = await tracker.getBehaviorProfile();
+    const sessions = await tracker.getSessionSummaries();
+    const maxCombo = sessions.reduce((m, s) => Math.max(m, s.maxCombo || 0), 0);
+
+    document.getElementById('ov-correct').textContent = profile.correctCount || '—';
+    document.getElementById('ov-wrong').textContent = profile.wrongCount || '—';
+    document.getElementById('ov-acc').textContent = profile.totalAnswers > 0 ? (100 - profile.errorRate) + '%' : '—';
+    document.getElementById('ov-combo').textContent = maxCombo || '—';
+    document.getElementById('ov-sessions').textContent = sessions.length || '—';
+
+    // Profile badge
+    const profileSection = document.getElementById('profileSection');
+    if (profile.totalAnswers > 0) {
+      profileSection.innerHTML = `
+        <span class="profile-badge ${profile.type}">${profile.label}</span>
+        <div class="profile-advice">
+          平均响应时间 ${(profile.avgResponseMs/1000).toFixed(1)}s · 错误率 ${profile.errorRate}% · 跳过率 ${profile.skipRate}%<br>
+          💡 ${profile.advice}
+        </div>`;
+    }
+
+    // Chart
+    const dailyStats = await tracker.getDailyStats(7);
+    drawTrendChart(dailyStats);
+  }
+
+  function drawTrendChart(stats) {
+    const canvas = document.getElementById('trendChart');
+    const ctx = canvas.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.parentElement.getBoundingClientRect();
+    canvas.width = rect.width * dpr;
+    canvas.height = 200 * dpr;
+    ctx.scale(dpr, dpr);
+    const W = rect.width, H = 200;
+
+    ctx.clearRect(0, 0, W, H);
+    if (stats.length === 0 || stats.every(s => s.answers === 0)) return;
+
+    const padL = 40, padR = 20, padT = 20, padB = 36;
+    const chartW = W - padL - padR;
+    const chartH = H - padT - padB;
+
+    // Grid
+    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+    ctx.lineWidth = 1;
+    for (let i = 0; i <= 4; i++) {
+      const y = padT + (chartH / 4) * i;
+      ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(W - padR, y); ctx.stroke();
+    }
+
+    // X labels
+    ctx.fillStyle = '#64748b';
+    ctx.font = '11px sans-serif';
+    ctx.textAlign = 'center';
+    stats.forEach((s, i) => {
+      const x = padL + (chartW / (stats.length - 1 || 1)) * i;
+      ctx.fillText(s.date.slice(5), x, H - 8);
+    });
+
+    // Y labels
+    ctx.textAlign = 'right';
+    ctx.fillStyle = '#fbbf24';
+    for (let i = 0; i <= 4; i++) {
+      const val = 100 - 25 * i;
+      const y = padT + (chartH / 4) * i + 4;
+      ctx.fillText(val + '%', padL - 6, y);
+    }
+
+    // Area fill
+    ctx.beginPath();
+    stats.forEach((s, i) => {
+      const x = padL + (chartW / (stats.length - 1 || 1)) * i;
+      const y = padT + chartH - (s.accuracy / 100) * chartH;
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    });
+    ctx.lineTo(padL + chartW, padT + chartH);
+    ctx.lineTo(padL, padT + chartH);
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(139,92,246,0.1)';
+    ctx.fill();
+
+    // Line
+    ctx.strokeStyle = '#8b5cf6';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    stats.forEach((s, i) => {
+      const x = padL + (chartW / (stats.length - 1 || 1)) * i;
+      const y = padT + chartH - (s.accuracy / 100) * chartH;
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+
+    // Dots
+    stats.forEach((s, i) => {
+      const x = padL + (chartW / (stats.length - 1 || 1)) * i;
+      const y = padT + chartH - (s.accuracy / 100) * chartH;
+      ctx.beginPath();
+      ctx.arc(x, y, 4, 0, Math.PI * 2);
+      ctx.fillStyle = '#8b5cf6';
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(x, y, 2, 0, Math.PI * 2);
+      ctx.fillStyle = '#fff';
+      ctx.fill();
+    });
+  }
+
+  // ── Review Plan ──
+  async function loadReviewPlan() {
+    const overview = await tracker.getMemoryOverview();
+    const dueItems = await tracker.getDueItems(30);
+    const schedule = await tracker.getReviewSchedule();
+    const allStates = await tracker.getAllMemoryStates();
+
+    // Stats
+    document.getElementById('rv-total').textContent = overview.totalItems || '—';
+    document.getElementById('rv-mastered').textContent = overview.mastered || '—';
+    document.getElementById('rv-learning').textContent = overview.learning || '—';
+    document.getElementById('rv-due').textContent = overview.dueNow || '—';
+
+    // Update due badge on tab
+    if (overview.dueNow > 0) {
+      const tabBtn = document.querySelector('[data-tab="review"]');
+      const existing = tabBtn.querySelector('.due-badge');
+      if (!existing) {
+        tabBtn.insertAdjacentHTML('beforeend', `<span class="due-badge">${overview.dueNow}</span>`);
+      } else {
+        existing.textContent = overview.dueNow;
+      }
+    }
+
+    // Memory ring chart
+    drawMemoryRing(overview, allStates);
+
+    // Due items list
+    const dueListEl = document.getElementById('dueList');
+    const dueCountEl = document.getElementById('dueCount');
+    const reviewBtn = document.getElementById('reviewStartBtn');
+
+    if (dueItems.length === 0) {
+      dueListEl.innerHTML = '<div class="empty-state"><span class="icon">🎉</span>暂无待复习词组<br><small style="color:var(--text-dimmer)">所有词组记忆状态良好！</small></div>';
+      dueCountEl.textContent = '';
+      reviewBtn.disabled = true;
+    } else {
+      dueCountEl.textContent = `（${dueItems.length} 个待复习）`;
+      reviewBtn.disabled = false;
+
+      let html = '';
+      dueItems.forEach(item => {
+        const now = Date.now();
+        const isOverdue = item.nextReview <= now;
+        const isToday = !isOverdue && new Date(item.nextReview).toDateString() === new Date().toDateString();
+
+        let urgencyClass = 'soon';
+        let urgencyText = '稍后';
+        if (item.reps === 0 && item.totalReviews === 0) { urgencyClass = 'new'; urgencyText = '新词'; }
+        else if (isOverdue) { urgencyClass = 'overdue'; urgencyText = '逾期'; }
+        else if (isToday) { urgencyClass = 'today'; urgencyText = '今日'; }
+
+        const retentionPct = Math.round(item.retention * 100);
+        const retentionColor = retentionPct >= 70 ? 'var(--green)' : retentionPct >= 40 ? 'var(--gold)' : 'var(--red)';
+        const difficultyPct = Math.round(item.difficulty * 100);
+
+        html += `<div class="review-item">
+          <span class="urgency-badge ${urgencyClass}">${urgencyText}</span>
+          <span class="item-key">${item.itemKey}</span>
+          <div class="retention-bar">
+            <div class="retention-fill" style="width:${retentionPct}%;background:${retentionColor};"></div>
+          </div>
+          <span class="item-meta">保持${retentionPct}% · 难度${difficultyPct}%</span>
+        </div>`;
+      });
+
+      dueListEl.innerHTML = html;
+    }
+
+    // Schedule
+    const scheduleEl = document.getElementById('scheduleList');
+    const now = Date.now();
+    const maxDue = Math.max(1, ...schedule.map(s => s.dueCount));
+
+    if (schedule.every(s => s.dueCount === 0)) {
+      scheduleEl.innerHTML = '<div class="empty-state"><span class="icon">📭</span>暂无复习日程<br><small>开始练习后，系统将根据遗忘曲线自动安排复习</small></div>';
+    } else {
+      let html = '';
+      schedule.forEach(s => {
+        const d = new Date(s.date + 'T00:00:00');
+        const isToday = s.date === new Date().toISOString().slice(0, 10);
+        const isPast = d < new Date(new Date().toDateString());
+        const barPct = Math.max(Math.round(s.dueCount / maxDue * 100), s.dueCount > 0 ? 8 : 0);
+        const barClass = isPast ? 'overdue' : isToday ? 'today' : 'upcoming';
+        const dayLabel = isToday ? '今天' : isPast ? '已过期' : s.date.slice(5);
+
+        html += `<div class="schedule-row">
+          <div class="schedule-date" style="${isToday ? 'color:var(--gold);font-weight:700;' : ''}">${dayLabel}</div>
+          <div class="schedule-bar-wrap">
+            <div class="schedule-bar ${barClass}" style="width:${barPct}%">${s.dueCount > 0 ? s.dueCount + ' 个' : ''}</div>
+          </div>
+          <div class="schedule-meta">${s.dueCount} 个</div>
+        </div>`;
+      });
+
+      scheduleEl.innerHTML = html;
+    }
+  }
+
+  function drawMemoryRing(overview, allStates) {
+    const canvas = document.getElementById('memoryRing');
+    const ctx = canvas.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = 160 * dpr;
+    canvas.height = 160 * dpr;
+    canvas.style.width = '160px';
+    canvas.style.height = '160px';
+    ctx.scale(dpr, dpr);
+
+    const cx = 80, cy = 80, r = 60, lineWidth = 18;
+    const total = overview.totalItems || 1;
+
+    const segments = [
+      { value: overview.mastered, color: '#22d3a7', label: '已掌握' },
+      { value: overview.learning, color: '#fbbf24', label: '学习中' },
+      { value: overview.dueNow, color: '#f43f5e', label: '待复习' },
+    ];
+    // Add "new" items
+    const accounted = segments.reduce((s, seg) => s + seg.value, 0);
+    const newItems = overview.totalItems - accounted;
+    if (newItems > 0) segments.push({ value: newItems, color: '#8b5cf6', label: '新词' });
+
+    // Background ring
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+    ctx.lineWidth = lineWidth;
+    ctx.stroke();
+
+    // Segments
+    let startAngle = -Math.PI / 2;
+    segments.forEach(seg => {
+      if (seg.value <= 0) return;
+      const sliceAngle = (seg.value / total) * Math.PI * 2;
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, startAngle, startAngle + sliceAngle);
+      ctx.strokeStyle = seg.color;
+      ctx.lineWidth = lineWidth;
+      ctx.lineCap = 'butt';
+      ctx.stroke();
+      startAngle += sliceAngle;
+    });
+
+    // Center text
+    ctx.fillStyle = '#e2e8f0';
+    ctx.font = 'bold 24px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(overview.avgRetention + '%', cx, cy - 6);
+    ctx.fillStyle = '#64748b';
+    ctx.font = '10px sans-serif';
+    ctx.fillText('平均保持率', cx, cy + 14);
+
+    // Legend
+    const legendEl = document.getElementById('memoryLegend');
+    legendEl.innerHTML = segments.map(seg =>
+      `<div><span class="dot" style="background:${seg.color};"></span>${seg.label}：${seg.value} 个</div>`
+    ).join('');
+  }
+
+  // Start review mode — navigate to synonym module with review params
+  function startReview() {
+    window.location.href = '../modules/synonym/index.html?mode=review';
+  }
+
+  // ── Sessions ──
+  async function loadSessions() {
+    const sessions = await tracker.getSessionSummaries();
+    const container = document.getElementById('sessionsList');
+
+    if (sessions.length === 0) {
+      container.innerHTML = '<div class="empty-state"><span class="icon">📭</span>暂无练习记录<br><a class="cta-link" href="../modules/synonym/index.html">开始练习</a></div>';
+      return;
+    }
+
+    let html = '';
+    sessions.forEach(s => {
+      const d = new Date(s.startTime);
+      const dateStr = `${d.getMonth()+1}/${d.getDate()}`;
+      const timeStr = `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+      const total = s.rightCount + s.wrongCount;
+      const correctPct = total > 0 ? Math.round(s.rightCount / total * 100) : 0;
+      const wrongPct = total > 0 ? 100 - correctPct : 0;
+      const durationStr = s.durationMs > 0 ? Math.round(s.durationMs / 60000) + 'min' : '—';
+
+      html += `<div class="session-item">
+        <div class="session-date">${dateStr}<br><small>${timeStr}</small></div>
+        <div class="session-bar-wrap">
+          <div class="session-bar-correct" style="width:${correctPct}%"></div>
+          <div class="session-bar-wrong" style="width:${wrongPct}%"></div>
+        </div>
+        <div class="session-meta">${s.accuracy}% · ${durationStr}${s.maxCombo > 0 ? ' · ' + s.maxCombo + 'x' : ''}</div>
+      </div>`;
+    });
+
+    container.innerHTML = html;
+  }
+
+  // ── Wrong answers ──
+  async function loadWrongAnswers() {
+    const wrongs = await tracker.getWrongAnswers();
+    const container = document.getElementById('wrongList');
+
+    if (wrongs.length === 0) {
+      container.innerHTML = '<div class="empty-state"><span class="icon">🎉</span>暂无错题，继续保持！</div>';
+      return;
+    }
+
+    let html = '';
+    wrongs.forEach(w => {
+      const d = new Date(w.timestamp);
+      const dateStr = `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+      html += `<div class="wrong-item">
+        <span class="wrong-icon">❌</span>
+        <span class="wrong-key">${w.itemKey}</span>
+        <span class="wrong-time">${dateStr}</span>
+      </div>`;
+    });
+
+    container.innerHTML = html;
+  }
+
+  initStudentPage();
+</script>
+
+</body>
+</html>
