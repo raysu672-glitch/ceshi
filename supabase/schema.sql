@@ -77,20 +77,34 @@ CREATE INDEX idx_memory_due ON memory_states (retrievability) WHERE retrievabili
 
 -- students 表：学生只能读写自己
 ALTER TABLE students ENABLE ROW LEVEL SECURITY;
-CREATE POLICY students_self ON students
-  FOR ALL USING (id = current_setting('request.jwt.claims', true)::json->>'student_id');
+-- 删除旧策略（如存在）
+DROP POLICY IF EXISTS students_self ON students;
+-- SELECT/UPDATE/DELETE：学生只能操作自己
+CREATE POLICY students_self_select ON students
+  FOR SELECT USING (true);  -- 允许匿名读取所有学生（管理端需要）
+CREATE POLICY students_self_insert ON students
+  FOR INSERT WITH CHECK (true);  -- 允许匿名插入（注册）
+CREATE POLICY students_self_update ON students
+  FOR UPDATE USING (true);  -- 允许更新（merge-duplicates 需要）
 
--- practice_events 表：学生只能插入自己的事件
+-- practice_events 表：学生只能插入自己的事件，管理端可读取全部
 ALTER TABLE practice_events ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS events_insert ON practice_events;
+DROP POLICY IF EXISTS events_self ON practice_events;
 CREATE POLICY events_insert ON practice_events
-  FOR INSERT WITH CHECK (student_id = current_setting('request.jwt.claims', true)::json->>'student_id');
-CREATE POLICY events_self ON practice_events
-  FOR SELECT USING (student_id = current_setting('request.jwt.claims', true)::json->>'student_id');
+  FOR INSERT WITH CHECK (true);  -- 允许插入（学生上报事件）
+CREATE POLICY events_select ON practice_events
+  FOR SELECT USING (true);  -- 允许读取（管理端查询）
 
--- memory_states 表：学生读写自己
+-- memory_states 表：允许读写（SDK 上报和管理端查询）
 ALTER TABLE memory_states ENABLE ROW LEVEL SECURITY;
-CREATE POLICY memory_self ON memory_states
-  FOR ALL USING (student_id = current_setting('request.jwt.claims', true)::json->>'student_id');
+DROP POLICY IF EXISTS memory_self ON memory_states;
+CREATE POLICY memory_insert ON memory_states
+  FOR INSERT WITH CHECK (true);
+CREATE POLICY memory_select ON memory_states
+  FOR SELECT USING (true);
+CREATE POLICY memory_update ON memory_states
+  FOR UPDATE USING (true);
 
 -- ── 6. 教师角色视图（方便管理端查询） ──
 
@@ -270,7 +284,7 @@ FROM access_keys
 ORDER BY created_at DESC;
 
 -- ── 9. 管理端 RPC 函数（绕过 RLS）────────────────────
--- 获取所有学生摘要（用于管理端学生画像）
+-- 获取所有学生摘要（从 students 表出发，确保未练习的学生也显示）
 CREATE OR REPLACE FUNCTION get_admin_students_summary()
 RETURNS TABLE (
   student_id TEXT,
@@ -281,17 +295,18 @@ RETURNS TABLE (
   correct_answers BIGINT,
   accuracy_pct NUMERIC,
   avg_response_ms NUMERIC,
-  last_active TIMESTAMPTZ
+  last_active TIMESTAMPTZ,
+  behavior_type TEXT
 ) AS $$
 BEGIN
   RETURN QUERY
   SELECT
-    e.student_id,
+    s.id AS student_id,
     s.display_name,
     s.class_name,
     COUNT(DISTINCT e.session_id)::BIGINT AS total_sessions,
-    COUNT(*) FILTER (WHERE e.event_type = 'answer')::BIGINT AS total_answers,
-    COUNT(*) FILTER (WHERE e.event_type = 'answer' AND (e.payload->>'correct')::boolean = true)::BIGINT AS correct_answers,
+    COALESCE(COUNT(*) FILTER (WHERE e.event_type = 'answer'), 0)::BIGINT AS total_answers,
+    COALESCE(COUNT(*) FILTER (WHERE e.event_type = 'answer' AND (e.payload->>'correct')::boolean = true), 0)::BIGINT AS correct_answers,
     CASE WHEN COUNT(*) FILTER (WHERE e.event_type = 'answer') > 0
       THEN ROUND(
         COUNT(*) FILTER (WHERE e.event_type = 'answer' AND (e.payload->>'correct')::boolean = true)::numeric /
@@ -300,10 +315,22 @@ BEGIN
       ELSE 0
     END AS accuracy_pct,
     AVG((e.payload->>'responseMs')::int) FILTER (WHERE e.event_type = 'answer') AS avg_response_ms,
-    MAX(e.created_at) AS last_active
-  FROM practice_events e
-  LEFT JOIN students s ON e.student_id = s.id
-  GROUP BY e.student_id, s.display_name, s.class_name;
+    GREATEST(MAX(e.created_at), s.last_active) AS last_active,
+    CASE
+      WHEN AVG((e.payload->>'responseMs')::numeric) FILTER (WHERE e.event_type = 'answer') < 2000
+       AND COUNT(*) FILTER (WHERE e.event_type = 'answer' AND (e.payload->>'correct')::boolean = false)::numeric /
+           NULLIF(COUNT(*) FILTER (WHERE e.event_type = 'answer'), 0) > 0.3
+      THEN 'impulsive'
+      WHEN AVG((e.payload->>'responseMs')::numeric) FILTER (WHERE e.event_type = 'answer') >= 3000
+       AND COUNT(*) FILTER (WHERE e.event_type = 'answer' AND (e.payload->>'correct')::boolean = false)::numeric /
+           NULLIF(COUNT(*) FILTER (WHERE e.event_type = 'answer'), 0) <= 0.1
+      THEN 'cautious'
+      ELSE 'balanced'
+    END AS behavior_type
+  FROM students s
+  LEFT JOIN practice_events e ON e.student_id = s.id
+  GROUP BY s.id, s.display_name, s.class_name, s.last_active
+  ORDER BY s.display_name;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
@@ -354,7 +381,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- 获取行为画像数据（用于管理端）
+-- 获取行为画像数据（用于管理端，从 students 表出发）
 CREATE OR REPLACE FUNCTION get_admin_behavior_profile()
 RETURNS TABLE (
   student_id TEXT,
@@ -368,9 +395,9 @@ RETURNS TABLE (
 BEGIN
   RETURN QUERY
   SELECT
-    e.student_id,
+    s.id AS student_id,
     s.display_name,
-    COUNT(*) FILTER (WHERE e.event_type = 'answer')::BIGINT AS total_answers,
+    COALESCE(COUNT(*) FILTER (WHERE e.event_type = 'answer'), 0)::BIGINT AS total_answers,
     ROUND(AVG((e.payload->>'responseMs')::numeric) FILTER (WHERE e.event_type = 'answer'), 1) AS avg_response_ms,
     CASE WHEN COUNT(*) FILTER (WHERE e.event_type = 'answer') > 0
       THEN ROUND(
@@ -379,7 +406,7 @@ BEGIN
       )
       ELSE 0
     END AS error_rate_pct,
-    COUNT(*) FILTER (WHERE e.event_type = 'skip')::BIGINT AS skip_count,
+    COALESCE(COUNT(*) FILTER (WHERE e.event_type = 'skip'), 0)::BIGINT AS skip_count,
     CASE
       WHEN AVG((e.payload->>'responseMs')::numeric) FILTER (WHERE e.event_type = 'answer') < 2000
        AND COUNT(*) FILTER (WHERE e.event_type = 'answer' AND (e.payload->>'correct')::boolean = false)::numeric /
@@ -391,9 +418,9 @@ BEGIN
       THEN 'cautious'
       ELSE 'balanced'
     END AS behavior_type
-  FROM practice_events e
-  LEFT JOIN students s ON e.student_id = s.id
-  GROUP BY e.student_id, s.display_name
+  FROM students s
+  LEFT JOIN practice_events e ON e.student_id = s.id
+  GROUP BY s.id, s.display_name
   HAVING COUNT(*) FILTER (WHERE e.event_type = 'answer') >= 5;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;

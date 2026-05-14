@@ -707,6 +707,19 @@
   }
 
   function doLogin(name) {
+    // 登录时尝试恢复该学生的原始 student_id
+    if (typeof tracker !== 'undefined' && tracker.loginAsStudent) {
+      const existingId = tracker.loginAsStudent(name);
+      if (existingId) {
+        // 成功恢复原 student_id
+        hideAuthModal();
+        updateUIState();
+        showToast(`欢迎回来，${name}！`, 'success');
+        return;
+      }
+    }
+
+    // 首次登录（本地无映射），用当前 student_id
     const id = getStudentId();
     localStorage.setItem(SK_NAME, name);
     localStorage.setItem(SK_LOGGED, 'true');
@@ -772,11 +785,24 @@
 
     // 注册
     localStorage.setItem(sk, simpleHash(password));
+
+    // 生成全新的 student_id（关键！确保每个学生 ID 唯一）
+    let newStudentId;
+    if (typeof tracker !== 'undefined' && tracker.registerNewStudent) {
+      newStudentId = tracker.registerNewStudent(name);
+    } else {
+      newStudentId = getStudentId();
+    }
+
     // 标记密钥已使用
     if (typeof tracker !== 'undefined' && tracker.consumeKey) {
-      await tracker.consumeKey(regKeyVal, name, localStorage.getItem(SK_ID));
+      await tracker.consumeKey(regKeyVal, name, newStudentId);
     }
-    doLogin(name);
+
+    localStorage.setItem(SK_NAME, name);
+    localStorage.setItem(SK_LOGGED, 'true');
+    hideAuthModal();
+    updateUIState();
     showToast(`注册成功，欢迎 ${name}！`, 'success');
   }
 
@@ -784,7 +810,11 @@
   function handleLogout() {
     localStorage.removeItem(SK_LOGGED);
     localStorage.removeItem(SK_NAME);
-    // 注意：不清除 SK_ID、SK_HASH 和练习数据
+    localStorage.removeItem(SK_ID); // 清除 student_id，确保下次注册不共用
+    // 同步 tracker logout
+    if (typeof tracker !== 'undefined' && tracker.logout) {
+      tracker.logout();
+    }
     updateUIState();
     showAuthModal('login');
     showToast('已退出登录', 'success');

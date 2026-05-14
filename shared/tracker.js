@@ -40,6 +40,7 @@ const tracker = (() => {
   const STUDENT_CLASS_KEY = 'ielts_student_class';
   const SESSION_COUNTER_KEY = 'ielts_session_counter';
   const LOGGED_IN_KEY = 'ielts_logged_in';
+  const STUDENT_ID_MAP_KEY = 'ielts_student_id_map'; // name → student_id 映射
 
   // ── Student ID 生成 ──
   function _getOrCreateStudentId() {
@@ -49,6 +50,33 @@ const tracker = (() => {
       localStorage.setItem(STUDENT_ID_KEY, id);
     }
     return id;
+  }
+
+  // 生成全新的 Student ID（注册时使用，确保每个学生 ID 唯一）
+  function _generateNewStudentId() {
+    const id = 'stu_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
+    localStorage.setItem(STUDENT_ID_KEY, id);
+    _studentId = id;
+    return id;
+  }
+
+  // 保存 name → student_id 映射
+  function _saveStudentIdMapping(name, studentId) {
+    if (!name) return;
+    try {
+      const map = JSON.parse(localStorage.getItem(STUDENT_ID_MAP_KEY) || '{}');
+      map[name] = studentId;
+      localStorage.setItem(STUDENT_ID_MAP_KEY, JSON.stringify(map));
+    } catch (e) { /* 非关键 */ }
+  }
+
+  // 按 name 查找已保存的 student_id
+  function _lookupStudentIdByName(name) {
+    if (!name) return null;
+    try {
+      const map = JSON.parse(localStorage.getItem(STUDENT_ID_MAP_KEY) || '{}');
+      return map[name] || null;
+    } catch (e) { return null; }
   }
 
   // ── Session ID 生成 ──
@@ -683,7 +711,26 @@ const tracker = (() => {
    */
   async function init(config) {
     _config = config;
-    _studentId = config.studentId || _getOrCreateStudentId();
+
+    // 优先级：config.studentId > name 映射 > 自动生成
+    if (config.studentId) {
+      _studentId = config.studentId;
+      localStorage.setItem(STUDENT_ID_KEY, _studentId);
+    } else {
+      const name = localStorage.getItem(STUDENT_NAME_KEY);
+      if (name) {
+        const existingId = _lookupStudentIdByName(name);
+        if (existingId) {
+          _studentId = existingId;
+          localStorage.setItem(STUDENT_ID_KEY, _studentId);
+        } else {
+          _studentId = _getOrCreateStudentId();
+        }
+      } else {
+        _studentId = _getOrCreateStudentId();
+      }
+    }
+
     _supabaseUrl = config.supabaseUrl || '';
     _supabaseAnonKey = config.supabaseAnonKey || '';
 
@@ -786,7 +833,11 @@ const tracker = (() => {
    * @param {{name?:string, className?:string}} profile
    */
   function setStudentProfile(profile) {
-    if (profile.name) localStorage.setItem(STUDENT_NAME_KEY, profile.name);
+    if (profile.name) {
+      localStorage.setItem(STUDENT_NAME_KEY, profile.name);
+      // 保存 name → student_id 映射
+      _saveStudentIdMapping(profile.name, _studentId);
+    }
     if (profile.className !== undefined) localStorage.setItem(STUDENT_CLASS_KEY, profile.className);
     localStorage.setItem(LOGGED_IN_KEY, 'true');
     // 同步到 Supabase
@@ -804,12 +855,52 @@ const tracker = (() => {
   }
 
   /**
-   * 退出登录（清除身份信息，保留 studentId 和练习数据）
+   * 退出登录（清除身份信息和 studentId，保留练习数据）
+   * 清除 studentId 是关键：确保下次注册生成新 ID，而不是复用
    */
   function logout() {
     localStorage.removeItem(STUDENT_NAME_KEY);
     localStorage.removeItem(STUDENT_CLASS_KEY);
     localStorage.removeItem(LOGGED_IN_KEY);
+    // 清除 student_id，下次登录时按 name 查找或生成新的
+    localStorage.removeItem(STUDENT_ID_KEY);
+    _studentId = null;
+  }
+
+  /**
+   * 注册新学生（生成全新 student_id）
+   * @param {string} name - 学生姓名
+   * @returns {string} 新的 student_id
+   */
+  function registerNewStudent(name) {
+    const newId = _generateNewStudentId();
+    localStorage.setItem(STUDENT_NAME_KEY, name);
+    localStorage.setItem(LOGGED_IN_KEY, 'true');
+    _saveStudentIdMapping(name, newId);
+    if (_supabaseUrl && _supabaseAnonKey) {
+      _registerStudent();
+    }
+    return newId;
+  }
+
+  /**
+   * 按姓名登录已有学生（恢复其 student_id）
+   * @param {string} name - 学生姓名
+   * @returns {string|null} 恢复的 student_id，或 null（未找到）
+   */
+  function loginAsStudent(name) {
+    const existingId = _lookupStudentIdByName(name);
+    if (existingId) {
+      localStorage.setItem(STUDENT_ID_KEY, existingId);
+      _studentId = existingId;
+      localStorage.setItem(STUDENT_NAME_KEY, name);
+      localStorage.setItem(LOGGED_IN_KEY, 'true');
+      if (_supabaseUrl && _supabaseAnonKey) {
+        _registerStudent();
+      }
+      return existingId;
+    }
+    return null;
   }
 
   function getSessionId() { return _sessionId; }
@@ -1172,6 +1263,8 @@ const tracker = (() => {
     init, event, startSession, endSession,
     getStudentId, getStudentName, getStudentClass, setStudentProfile,
     isLoggedIn, logout,
+    // v5: 学生 ID 管理
+    registerNewStudent, loginAsStudent,
     getSessionId, flush, getLocalEvents, destroy,
     // v2: 本地数据聚合
     getDailyStats, getErrorItems, getBehaviorProfile,
