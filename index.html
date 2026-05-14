@@ -885,9 +885,24 @@
   document.getElementById('regClassOther').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('regPassword').focus(); });
 
   // ══════════════════════════════════════════
-  //  初始化
+  //  初始化 Tracker + 学生身份系统
   // ══════════════════════════════════════════
+
+  // Supabase 云端配置（与 admin 端一致）
+  const SUPABASE_URL = 'https://jhmcyiilfndpdiyutnzu.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpobWN5aWlsZm5kcGRpeXV0bnp1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3MDc5OTAsImV4cCI6MjA5NDI4Mzk5MH0.XS_Ewu1GPMYuep6X9wPdzKjtqIwQhkt9ptpv73dLWj4';
+
   getStudentId(); // 确保 studentId 存在
+
+  // 初始化 tracker（密钥验证需要访问 Supabase）
+  if (typeof tracker !== 'undefined') {
+    tracker.init({
+      module: 'platform',
+      supabaseUrl: SUPABASE_URL,
+      supabaseAnonKey: SUPABASE_ANON_KEY,
+    });
+  }
+
   updateUIState();
 
   // 未登录 → 弹出登录
