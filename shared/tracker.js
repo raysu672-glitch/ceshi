@@ -880,8 +880,16 @@ const tracker = (() => {
             class_name: k.class_name,
           }))),
         });
-        if (res.ok) return await res.json();
-      } catch (e) { /* 降级 */ }
+        if (res.ok) {
+          console.log('[Tracker] Keys generated in Supabase:', keys.map(k => k.key));
+          return await res.json();
+        } else {
+          const errText = await res.text();
+          console.error('[Tracker] Supabase insert failed:', res.status, errText);
+        }
+      } catch (e) {
+        console.error('[Tracker] Supabase network error:', e.message);
+      }
     }
     // localStorage 降级
     let localKeys = [];
