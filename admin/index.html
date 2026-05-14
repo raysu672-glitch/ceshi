@@ -569,8 +569,8 @@
           <input type="number" id="genCount" value="1" min="1" max="50" style="width:80px;text-align:center;">
         </div>
         <div class="config-field">
-          <label>学生注册姓名（用于验证）</label>
-          <input type="text" id="genStudent" placeholder="学生注册时必须使用此姓名">
+          <label>学生注册姓名（可选，备注用）</label>
+          <input type="text" id="genStudent" placeholder="如：学生自己填写的姓名">
         </div>
         <div class="config-field">
           <label>学生真实姓名（可选，备注用）</label>
@@ -1100,15 +1100,10 @@
     const realName = document.getElementById('genRealName').value.trim() || null;
     const btn = document.getElementById('genBtn');
 
-    if (!student) {
-      showToast('请填写学生注册姓名', 'error');
-      return;
-    }
-
     btn.disabled = true;
     btn.textContent = '生成中...';
     try {
-      // student_name 用于验证注册姓名，class_name 用于存储真实姓名（字段复用）
+      // student_name 和 class_name 都用于教师备注，学生可自由填写姓名注册
       const keys = await adminTracker.generateKeys(count, student, realName);
       showToast(`成功生成 ${keys.length} 个密钥`, 'success');
       loadKeys();

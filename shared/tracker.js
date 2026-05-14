@@ -909,7 +909,7 @@ const tracker = (() => {
   /**
    * 验证密钥（注册时调用）
    * @param {string} key
-   * @param {string} [studentName]
+   * @param {string} [studentName] - 保留参数但不用于验证
    * @returns {Promise<{valid:boolean, message:string}>}
    */
   async function validateKey(key, studentName) {
@@ -932,6 +932,7 @@ const tracker = (() => {
               const r = await res.json();
               if (r.length > 0) {
                 if (r[0].used_by) {
+                  // 密钥已使用，检查是否是当前学生重新验证
                   return r[0].used_by === studentName
                     ? { valid: true, message: '该密钥已绑定此账号' }
                     : { valid: false, message: '该密钥已被使用' };
@@ -941,9 +942,7 @@ const tracker = (() => {
             }
             return { valid: false, message: '无效的激活密钥' };
           }
-          if (rows[0].student_name && rows[0].student_name !== studentName) {
-            return { valid: false, message: `该密钥预分配给「${rows[0].student_name}」，请用本人姓名注册` };
-          }
+          // 密钥有效且未使用，学生可自由填写姓名
           return { valid: true, message: '密钥有效' };
         }
       } catch (e) { /* 降级 */ }
@@ -961,9 +960,7 @@ const tracker = (() => {
         ? { valid: true, message: '该密钥已绑定此账号' }
         : { valid: false, message: '该密钥已被使用' };
     }
-    if (row.student_name && row.student_name !== studentName) {
-      return { valid: false, message: `该密钥预分配给「${row.student_name}」，请用本人姓名注册` };
-    }
+    // 密钥有效且未使用，学生可自由填写姓名
     return { valid: true, message: '密钥有效' };
   }
 
