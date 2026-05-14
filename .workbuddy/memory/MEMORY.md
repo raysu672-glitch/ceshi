@@ -120,6 +120,18 @@ G:\网站\同义替换\
 3. ✅ 第三期：遗忘曲线 + 学生端增强（已完成）
 4. ✅ 第四期：密钥激活系统（已完成）
 
+## Supabase 云端部署（2026-05-14）
+- **项目 URL**: `https://jhmcyiilfndpdiyutnzu.supabase.co`
+- **GitHub 仓库**: `https://github.com/raysu672-glitch/ceshi`
+- **部署状态**: 前端代码已配置，后端 Schema 待导入
+- **已配置模块**:
+  - `modules/synonym/index.html`
+  - `student/index.html`
+  - `admin/index.html`（默认可覆盖）
+
+## 下一步
+- 在 Supabase SQL Editor 中执行 `supabase/schema.sql`
+
 ## 用户偏好
 - 偏好游戏化学习体验
 - 重视视觉效果和交互反馈

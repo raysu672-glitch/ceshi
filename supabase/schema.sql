@@ -238,17 +238,21 @@ CREATE INDEX IF NOT EXISTS idx_access_keys_used    ON access_keys (used_by) WHER
 ALTER TABLE access_keys ENABLE ROW LEVEL SECURITY;
 
 -- 检查并创建策略（兼容 PostgreSQL 15）
-DO $$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_policies
-    WHERE tablename = 'access_keys' AND policyname = 'anon_read_unused'
-  ) THEN
-    CREATE POLICY anon_read_unused ON access_keys
-      FOR SELECT USING (is_active = true AND used_by IS NULL);
-  END IF;
-END
-$$;
+-- 删除可能冲突的旧策略
+DROP POLICY IF EXISTS anon_read_unused ON access_keys;
+
+-- SELECT 策略：允许匿名查询所有密钥（注册验证/管理端列表用）
+-- 注意：密钥值本身就是敏感信息，通过预分配姓名来控制使用权限
+CREATE POLICY anon_select_keys ON access_keys
+  FOR SELECT USING (true);
+
+-- INSERT 策略：允许匿名插入新密钥（管理端生成用）
+CREATE POLICY anon_insert_keys ON access_keys
+  FOR INSERT WITH CHECK (true);
+
+-- UPDATE 策略：允许匿名更新（消费/撤销密钥）
+CREATE POLICY anon_update_keys ON access_keys
+  FOR UPDATE USING (true);
 -- 教师（service_role）可完整管理
 -- 注意：管理端使用 localStorage 中的 service_role key 或通过 admin 面板操作
 
