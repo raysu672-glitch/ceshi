@@ -1054,8 +1054,118 @@ const tracker = (() => {
     const idx = localKeys.findIndex(k => k.key === ck);
     if (idx === -1) return false;
     localKeys[idx].is_active = false;
-    localStorage.setItem(KEY_STORE, JSON.stringify(localKeys));
+      localStorage.setItem(KEY_STORE, JSON.stringify(localKeys));
     return true;
+  }
+
+  // v5: 管理端远程查询（绕过 RLS）
+  // 获取所有学生摘要
+  async function getAdminStudentsOverview() {
+    if (!_supabaseUrl || !_supabaseAnonKey) {
+      // 降级到本地
+      const profile = await getBehaviorProfile();
+      return [{
+        student_id: _studentId,
+        display_name: localStorage.getItem(STUDENT_NAME_KEY) || '未命名',
+        class_name: localStorage.getItem(STUDENT_CLASS_KEY) || '',
+        total_sessions: (await getSessionSummaries()).length,
+        total_answers: profile.totalAnswers,
+        correct_answers: profile.correctCount,
+        accuracy_pct: 100 - profile.errorRate,
+        avg_response_ms: profile.avgResponseMs,
+        behavior_type: profile.type,
+      }];
+    }
+    try {
+      const res = await fetch(`${_supabaseUrl}/rest/v1/rpc/get_admin_students_summary`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': _supabaseAnonKey,
+          'Authorization': `Bearer ${_supabaseAnonKey}`,
+        },
+        body: '{}',
+      });
+      if (res.ok) {
+        const data = await res.json();
+        return data;
+      }
+    } catch (e) {
+      console.warn('[Tracker] getAdminStudentsOverview failed:', e.message);
+    }
+    // 降级到本地
+    const profile = await getBehaviorProfile();
+    return [{
+      student_id: _studentId,
+      display_name: localStorage.getItem(STUDENT_NAME_KEY) || '未命名',
+      class_name: localStorage.getItem(STUDENT_CLASS_KEY) || '',
+      total_sessions: (await getSessionSummaries()).length,
+      total_answers: profile.totalAnswers,
+      correct_answers: profile.correctCount,
+      accuracy_pct: 100 - profile.errorRate,
+      avg_response_ms: profile.avgResponseMs,
+      behavior_type: profile.type,
+    }];
+  }
+
+  // 获取所有学生的每日统计
+  async function getAdminDailyStats(days = 7) {
+    if (!_supabaseUrl || !_supabaseAnonKey) {
+      // 降级到本地
+      return await getDailyStats(days);
+    }
+    try {
+      const res = await fetch(`${_supabaseUrl}/rest/v1/rpc/get_admin_daily_stats`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': _supabaseAnonKey,
+          'Authorization': `Bearer ${_supabaseAnonKey}`,
+        },
+        body: JSON.stringify({ days_int: days }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        // 转换为本地格式
+        return data.map(d => ({
+          date: d.date,
+          sessions: parseInt(d.session_count) || 0,
+          answers: parseInt(d.total_answers) || 0,
+          correct: parseInt(d.correct_answers) || 0,
+          wrong: parseInt(d.wrong_answers) || 0,
+          accuracy: parseFloat(d.accuracy) || 0,
+          avgResponseMs: parseFloat(d.avg_response_ms) || 0,
+          totalDurationMs: 0,
+        }));
+      }
+    } catch (e) {
+      console.warn('[Tracker] getAdminDailyStats failed:', e.message);
+    }
+    // 降级到本地
+    return await getDailyStats(days);
+  }
+
+  // 获取所有学生的行为画像
+  async function getAdminBehaviorProfile() {
+    if (!_supabaseUrl || !_supabaseAnonKey) return null;
+    try {
+      const res = await fetch(`${_supabaseUrl}/rest/v1/rpc/get_admin_behavior_profile`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': _supabaseAnonKey,
+          'Authorization': `Bearer ${_supabaseAnonKey}`,
+        },
+        body: '{}',
+      });
+      if (res.ok) {
+        const data = await res.json();
+        return data;
+      }
+    } catch (e) {
+      console.warn('[Tracker] getAdminBehaviorProfile failed:', e.message);
+    }
+    return null;
   }
 
   return {
@@ -1073,6 +1183,9 @@ const tracker = (() => {
     getMemoryOverview, getAllMemoryStates,
     // v4: 密钥管理
     generateKeys, validateKey, consumeKey, getKeys, revokeKey,
+
+    // v5: 管理端远程查询（绕过 RLS）
+    getAdminStudentsOverview, getAdminDailyStats, getAdminBehaviorProfile,
   };
 })();
 

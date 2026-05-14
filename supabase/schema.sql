@@ -216,8 +216,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- ── 8. 访问密钥表（第四期：密钥激活系统） ──
-CREATE TABLE IF NOT EXISTS access_keys (
+-- ── 8. 访问密钥表（第四期：密钥激活系统） ──CREATE TABLE IF NOT EXISTS access_keys (
   id           UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   key          TEXT UNIQUE NOT NULL,
   student_name TEXT,                          -- 预分配学生姓名（可选）
@@ -270,3 +269,131 @@ SELECT
 FROM access_keys
 ORDER BY created_at DESC;
 
+-- ── 9. 管理端 RPC 函数（绕过 RLS）────────────────────
+-- 获取所有学生摘要（用于管理端学生画像）
+CREATE OR REPLACE FUNCTION get_admin_students_summary()
+RETURNS TABLE (
+  student_id TEXT,
+  display_name TEXT,
+  class_name TEXT,
+  total_sessions BIGINT,
+  total_answers BIGINT,
+  correct_answers BIGINT,
+  accuracy_pct NUMERIC,
+  avg_response_ms NUMERIC,
+  last_active TIMESTAMPTZ
+) AS $$
+BEGIN
+  RETURN QUERY
+  SELECT
+    e.student_id,
+    s.display_name,
+    s.class_name,
+    COUNT(DISTINCT e.session_id)::BIGINT AS total_sessions,
+    COUNT(*) FILTER (WHERE e.event_type = 'answer')::BIGINT AS total_answers,
+    COUNT(*) FILTER (WHERE e.event_type = 'answer' AND (e.payload->>'correct')::boolean = true)::BIGINT AS correct_answers,
+    CASE WHEN COUNT(*) FILTER (WHERE e.event_type = 'answer') > 0
+      THEN ROUND(
+        COUNT(*) FILTER (WHERE e.event_type = 'answer' AND (e.payload->>'correct')::boolean = true)::numeric /
+        COUNT(*) FILTER (WHERE e.event_type = 'answer') * 100, 1
+      )
+      ELSE 0
+    END AS accuracy_pct,
+    AVG((e.payload->>'responseMs')::int) FILTER (WHERE e.event_type = 'answer') AS avg_response_ms,
+    MAX(e.created_at) AS last_active
+  FROM practice_events e
+  LEFT JOIN students s ON e.student_id = s.id
+  GROUP BY e.student_id, s.display_name, s.class_name;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 获取所有学生的每日统计（用于管理端总览）
+CREATE OR REPLACE FUNCTION get_admin_daily_stats(days_int INT DEFAULT 7)
+RETURNS TABLE (
+  date DATE,
+  total_answers BIGINT,
+  correct_answers BIGINT,
+  wrong_answers BIGINT,
+  accuracy NUMERIC,
+  avg_response_ms NUMERIC,
+  session_count BIGINT
+) AS $$
+DECLARE
+  start_date DATE := CURRENT_DATE - (days_int - 1);
+BEGIN
+  RETURN QUERY
+  WITH date_series AS (
+    SELECT generate_series(start_date, CURRENT_DATE, '1 day')::DATE AS date
+  ),
+  daily_data AS (
+    SELECT
+      e.created_at::DATE AS event_date,
+      COUNT(*) FILTER (WHERE e.event_type = 'answer')::BIGINT AS total_answers,
+      COUNT(*) FILTER (WHERE e.event_type = 'answer' AND (e.payload->>'correct')::boolean = true)::BIGINT AS correct_answers,
+      COUNT(*) FILTER (WHERE e.event_type = 'answer' AND (e.payload->>'correct')::boolean = false)::BIGINT AS wrong_answers,
+      AVG((e.payload->>'responseMs')::int) FILTER (WHERE e.event_type = 'answer') AS avg_response_ms,
+      COUNT(DISTINCT e.session_id) FILTER (WHERE e.event_type = 'start_session')::BIGINT AS session_count
+    FROM practice_events e
+    WHERE e.created_at::DATE >= start_date
+    GROUP BY e.created_at::DATE
+  )
+  SELECT
+    ds.date,
+    COALESCE(dd.total_answers, 0)::BIGINT AS total_answers,
+    COALESCE(dd.correct_answers, 0)::BIGINT AS correct_answers,
+    COALESCE(dd.wrong_answers, 0)::BIGINT AS wrong_answers,
+    CASE WHEN COALESCE(dd.total_answers, 0) > 0
+      THEN ROUND(COALESCE(dd.correct_answers, 0)::numeric / COALESCE(dd.total_answers, 1) * 100, 1)
+      ELSE 0
+    END AS accuracy,
+    dd.avg_response_ms,
+    COALESCE(dd.session_count, 0)::BIGINT AS session_count
+  FROM date_series ds
+  LEFT JOIN daily_data dd ON ds.date = dd.event_date
+  ORDER BY ds.date;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 获取行为画像数据（用于管理端）
+CREATE OR REPLACE FUNCTION get_admin_behavior_profile()
+RETURNS TABLE (
+  student_id TEXT,
+  display_name TEXT,
+  total_answers BIGINT,
+  avg_response_ms NUMERIC,
+  error_rate_pct NUMERIC,
+  skip_count BIGINT,
+  behavior_type TEXT
+) AS $$
+BEGIN
+  RETURN QUERY
+  SELECT
+    e.student_id,
+    s.display_name,
+    COUNT(*) FILTER (WHERE e.event_type = 'answer')::BIGINT AS total_answers,
+    ROUND(AVG((e.payload->>'responseMs')::numeric) FILTER (WHERE e.event_type = 'answer'), 1) AS avg_response_ms,
+    CASE WHEN COUNT(*) FILTER (WHERE e.event_type = 'answer') > 0
+      THEN ROUND(
+        COUNT(*) FILTER (WHERE e.event_type = 'answer' AND (e.payload->>'correct')::boolean = false)::numeric /
+        COUNT(*) FILTER (WHERE e.event_type = 'answer') * 100, 1
+      )
+      ELSE 0
+    END AS error_rate_pct,
+    COUNT(*) FILTER (WHERE e.event_type = 'skip')::BIGINT AS skip_count,
+    CASE
+      WHEN AVG((e.payload->>'responseMs')::numeric) FILTER (WHERE e.event_type = 'answer') < 2000
+       AND COUNT(*) FILTER (WHERE e.event_type = 'answer' AND (e.payload->>'correct')::boolean = false)::numeric /
+           NULLIF(COUNT(*) FILTER (WHERE e.event_type = 'answer'), 0) > 0.3
+      THEN 'impulsive'
+      WHEN AVG((e.payload->>'responseMs')::numeric) FILTER (WHERE e.event_type = 'answer') >= 3000
+       AND COUNT(*) FILTER (WHERE e.event_type = 'answer' AND (e.payload->>'correct')::boolean = false)::numeric /
+           NULLIF(COUNT(*) FILTER (WHERE e.event_type = 'answer'), 0) <= 0.1
+      THEN 'cautious'
+      ELSE 'balanced'
+    END AS behavior_type
+  FROM practice_events e
+  LEFT JOIN students s ON e.student_id = s.id
+  GROUP BY e.student_id, s.display_name
+  HAVING COUNT(*) FILTER (WHERE e.event_type = 'answer') >= 5;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;

@@ -670,7 +670,7 @@
 
   // ── Overview ──
   async function loadOverview() {
-    const dailyStats = await adminTracker.getDailyStats(7);
+    const dailyStats = await adminTracker.getAdminDailyStats(7);
     const sessions = await adminTracker.getSessionSummaries();
 
     const totalAnswers = dailyStats.reduce((s, d) => s + d.answers, 0);
@@ -792,7 +792,7 @@
 
   // ── Students ──
   async function loadStudents() {
-    const overview = await adminTracker.getStudentsOverview();
+    const overview = await adminTracker.getAdminStudentsOverview();
     const container = document.getElementById('studentsTable');
 
     if (overview.length === 0) {
@@ -964,47 +964,30 @@
     const modal = document.getElementById('studentModal');
     const content = document.getElementById('modalContent');
 
-    // 尝试获取学生姓名
-    const overview = await adminTracker.getStudentsOverview();
+    // 从远程数据获取学生信息
+    const overview = await adminTracker.getAdminStudentsOverview();
     const student = overview.find(s => s.student_id === studentId);
     const displayName = student?.display_name || studentId.slice(0, 16);
     document.getElementById('modalStudentName').textContent = `学生 ${displayName}`;
 
-    const profile = await adminTracker.getBehaviorProfile();
-    const dailyStats = await adminTracker.getDailyStats(7);
-    const errors = await adminTracker.getErrorItems();
-    const memoryOverview = await adminTracker.getMemoryOverview();
+    // 显示基本信息（详细行为画像功能开发中）
+    const totalAnswers = student?.total_answers || 0;
+    const correctAnswers = student?.correct_answers || 0;
+    const accuracy = student?.accuracy_pct || 0;
+    const avgMs = student?.avg_response_ms || 0;
 
     let html = `
       <div style="display:flex;gap:12px;margin-bottom:16px;">
-        <div class="stat-card" style="flex:1;"><div class="stat-value green">${profile.correctCount}</div><div class="stat-label">正确</div></div>
-        <div class="stat-card" style="flex:1;"><div class="stat-value red">${profile.wrongCount}</div><div class="stat-label">错误</div></div>
-        <div class="stat-card" style="flex:1;"><div class="stat-value gold">${100 - profile.errorRate}%</div><div class="stat-label">正确率</div></div>
+        <div class="stat-card" style="flex:1;"><div class="stat-value green">${correctAnswers}</div><div class="stat-label">正确</div></div>
+        <div class="stat-card" style="flex:1;"><div class="stat-value red">${totalAnswers - correctAnswers}</div><div class="stat-label">错误</div></div>
+        <div class="stat-card" style="flex:1;"><div class="stat-value gold">${accuracy}%</div><div class="stat-label">正确率</div></div>
       </div>
       <div style="margin-bottom:16px;">
-        <span class="badge ${profile.type}">${profile.label}</span>
-        <span style="font-size:13px;color:var(--text-dim);margin-left:8px;">${profile.advice}</span>
+        <span style="font-size:13px;color:var(--text-dim);">平均响应时间：${avgMs ? (avgMs/1000).toFixed(1) + 's' : '—'}</span>
       </div>
-      <div style="display:flex;gap:12px;margin-bottom:16px;">
-        <div class="stat-card" style="flex:1;"><div class="stat-value purple">${memoryOverview.totalItems}</div><div class="stat-label">已学词组</div></div>
-        <div class="stat-card" style="flex:1;"><div class="stat-value green">${memoryOverview.mastered}</div><div class="stat-label">已掌握</div></div>
-        <div class="stat-card" style="flex:1;"><div class="stat-value red">${memoryOverview.dueNow}</div><div class="stat-label">待复习</div></div>
-      </div>
-      <div class="card-title" style="font-size:13px;"><span class="icon">❌</span> 常错词组</div>`;
-
-    if (errors.length > 0) {
-      errors.slice(0, 10).forEach(e => {
-        const rate = e.errorRate || e.error_rate_pct || 0;
-        const cls = rate >= 50 ? 'high' : rate >= 25 ? 'mid' : 'low';
-        html += `<div class="heatmap-row">
-          <div class="heatmap-key">${e.itemKey || e.item_key}</div>
-          <div class="heatmap-bar-wrap"><div class="heatmap-bar ${cls}" style="width:${Math.max(rate,2)}%"></div></div>
-          <div class="heatmap-meta">${rate}%</div>
-        </div>`;
-      });
-    } else {
-      html += '<div style="font-size:13px;color:var(--text-dimmer);padding:8px 0;">暂无错题记录</div>';
-    }
+      <div style="font-size:13px;color:var(--text-dimmer);padding:8px 0;">
+        详细行为画像和错题记录功能开发中...
+      </div>`;
 
     content.innerHTML = html;
     modal.classList.add('show');
