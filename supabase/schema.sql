@@ -236,8 +236,19 @@ CREATE INDEX IF NOT EXISTS idx_access_keys_used    ON access_keys (used_by) WHER
 
 -- RLS：允许匿名读取未使用的激活密钥（用于注册验证）
 ALTER TABLE access_keys ENABLE ROW LEVEL SECURITY;
-CREATE POLICY IF NOT EXISTS anon_read_unused ON access_keys
-  FOR SELECT USING (is_active = true AND used_by IS NULL);
+
+-- 检查并创建策略（兼容 PostgreSQL 15）
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE tablename = 'access_keys' AND policyname = 'anon_read_unused'
+  ) THEN
+    CREATE POLICY anon_read_unused ON access_keys
+      FOR SELECT USING (is_active = true AND used_by IS NULL);
+  END IF;
+END
+$$;
 -- 教师（service_role）可完整管理
 -- 注意：管理端使用 localStorage 中的 service_role key 或通过 admin 面板操作
 
