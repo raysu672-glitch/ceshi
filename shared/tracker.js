@@ -782,12 +782,12 @@ const tracker = (() => {
   function getStudentClass() { return localStorage.getItem(STUDENT_CLASS_KEY) || ''; }
 
   /**
-   * 更新学生身份信息（姓名、班级）
+   * 更新学生身份信息（姓名）
    * @param {{name?:string, className?:string}} profile
    */
   function setStudentProfile(profile) {
     if (profile.name) localStorage.setItem(STUDENT_NAME_KEY, profile.name);
-    if (profile.className) localStorage.setItem(STUDENT_CLASS_KEY, profile.className);
+    if (profile.className !== undefined) localStorage.setItem(STUDENT_CLASS_KEY, profile.className);
     localStorage.setItem(LOGGED_IN_KEY, 'true');
     // 同步到 Supabase
     if (_supabaseUrl && _supabaseAnonKey) {
@@ -800,8 +800,7 @@ const tracker = (() => {
    */
   function isLoggedIn() {
     return localStorage.getItem(LOGGED_IN_KEY) === 'true'
-      && !!localStorage.getItem(STUDENT_NAME_KEY)
-      && !!localStorage.getItem(STUDENT_CLASS_KEY);
+      && !!localStorage.getItem(STUDENT_NAME_KEY);
   }
 
   /**

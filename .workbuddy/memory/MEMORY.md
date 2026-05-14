@@ -129,6 +129,12 @@ G:\网站\同义替换\
   - `student/index.html`
   - `admin/index.html`（默认可覆盖）
 
+## Bug 修复记录
+- **2026-05-14**: 修复注册时密钥验证失败（"无效的激活密钥"）
+  - **根因**: `index.html` 未调用 `tracker.init()` 传入 Supabase 凭据，导致 `validateKey()` 无法查询 Supabase，降级到 localStorage 查不到密钥
+  - **修复**: 在 `index.html` 初始化段添加 `tracker.init({ module: 'platform', supabaseUrl, supabaseAnonKey })`
+  - **教训**: 所有使用 tracker 密钥功能的页面都必须初始化 tracker 并传入 Supabase 配置
+
 ## 下一步
 - 在 Supabase SQL Editor 中执行 `supabase/schema.sql`
 

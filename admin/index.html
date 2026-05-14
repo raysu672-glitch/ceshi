@@ -569,20 +569,12 @@
           <input type="number" id="genCount" value="1" min="1" max="50" style="width:80px;text-align:center;">
         </div>
         <div class="config-field">
-          <label>预分配学生（可选）</label>
-          <input type="text" id="genStudent" placeholder="留空则不指定">
+          <label>学生注册姓名（用于验证）</label>
+          <input type="text" id="genStudent" placeholder="学生注册时必须使用此姓名">
         </div>
         <div class="config-field">
-          <label>预分配班级（可选）</label>
-          <select id="genClass">
-            <option value="">— 不指定 —</option>
-            <option value="雅思A班">雅思A班</option>
-            <option value="雅思B班">雅思B班</option>
-            <option value="雅思C班">雅思C班</option>
-            <option value="雅思D班">雅思D班</option>
-            <option value="雅思周末班">雅思周末班</option>
-            <option value="雅思一对一">雅思一对一</option>
-          </select>
+          <label>学生真实姓名（可选，备注用）</label>
+          <input type="text" id="genRealName" placeholder="如：张三（仅教师可见）">
         </div>
         <button class="gen-btn" id="genBtn" onclick="handleGenerateKeys()">生成密钥</button>
       </div>
@@ -810,7 +802,7 @@
 
     let html = `<table class="data-table">
       <thead><tr>
-        <th>姓名</th><th>班级</th><th>总答题</th><th>正确率</th><th>平均响应</th><th>轮次</th><th>类型</th><th></th>
+        <th>姓名</th><th>总答题</th><th>正确率</th><th>平均响应</th><th>轮次</th><th>类型</th><th></th>
       </tr></thead><tbody>`;
 
     overview.forEach(s => {
@@ -819,11 +811,9 @@
       const accPct = s.accuracy_pct != null ? s.accuracy_pct + '%' : '—';
       const avgMs = s.avg_response_ms ? (s.avg_response_ms / 1000).toFixed(1) + 's' : '—';
       const displayName = s.display_name || '—';
-      const className = s.class_name || '—';
 
       html += `<tr>
         <td style="color:var(--text);font-weight:500;">${displayName}</td>
-        <td><span style="color:var(--blue);">${className}</span></td>
         <td>${s.total_answers || 0}</td>
         <td>${accPct}</td>
         <td>${avgMs}</td>
@@ -974,12 +964,11 @@
     const modal = document.getElementById('studentModal');
     const content = document.getElementById('modalContent');
 
-    // 尝试获取学生姓名和班级
+    // 尝试获取学生姓名
     const overview = await adminTracker.getStudentsOverview();
     const student = overview.find(s => s.student_id === studentId);
     const displayName = student?.display_name || studentId.slice(0, 16);
-    const displayClass = student?.class_name || '';
-    document.getElementById('modalStudentName').textContent = displayClass ? `${displayName} · ${displayClass}` : `学生 ${displayName}`;
+    document.getElementById('modalStudentName').textContent = `学生 ${displayName}`;
 
     const profile = await adminTracker.getBehaviorProfile();
     const dailyStats = await adminTracker.getDailyStats(7);
@@ -1075,7 +1064,7 @@
     }
     let html = `<table class="key-table">
       <thead><tr>
-        <th>密钥</th><th>预分配学生</th><th>预分配班级</th>
+        <th>密钥</th><th>注册姓名</th><th>真实姓名</th>
         <th>状态</th><th>使用者</th><th>使用时间</th><th>操作</th>
       </tr></thead><tbody>`;
     keys.forEach(k => {
@@ -1084,14 +1073,14 @@
       const status = isRevoked ? 'revoked' : isUsed ? 'used' : 'unused';
       const statusText = isRevoked ? '已撤销' : isUsed ? '已使用' : '未使用';
       const preS = k.student_name || '—';
-      const preC = k.class_name || '—';
+      const realName = k.class_name || '—';  // class_name 字段存储真实姓名
       const user = k.used_by || '—';
       const usedAt = k.used_at ? new Date(k.used_at).toLocaleString('zh-CN', { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' }) : '—';
       const safeKey = (k.key || '').replace(/'/g, "\\'");
       html += `<tr>
         <td style="color:var(--purple);font-family:monospace;font-size:14px;letter-spacing:1px;">${k.key || ''}</td>
         <td>${preS}</td>
-        <td>${preC}</td>
+        <td>${realName}</td>
         <td><span class="key-badge ${status}">${statusText}</span></td>
         <td>${user}</td>
         <td style="font-size:11px;color:var(--text-dimmer);">${usedAt}</td>
@@ -1108,12 +1097,19 @@
   async function handleGenerateKeys() {
     const count = parseInt(document.getElementById('genCount').value) || 1;
     const student = document.getElementById('genStudent').value.trim() || null;
-    const cls = document.getElementById('genClass').value || null;
+    const realName = document.getElementById('genRealName').value.trim() || null;
     const btn = document.getElementById('genBtn');
+
+    if (!student) {
+      showToast('请填写学生注册姓名', 'error');
+      return;
+    }
+
     btn.disabled = true;
     btn.textContent = '生成中...';
     try {
-      const keys = await adminTracker.generateKeys(count, student, cls);
+      // student_name 用于验证注册姓名，class_name 用于存储真实姓名（字段复用）
+      const keys = await adminTracker.generateKeys(count, student, realName);
       showToast(`成功生成 ${keys.length} 个密钥`, 'success');
       loadKeys();
     } catch (e) {

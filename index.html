@@ -518,21 +518,6 @@
         <div class="form-error" id="loginNameError">请填写姓名</div>
       </div>
       <div class="form-group">
-        <label for="loginClass">班级</label>
-        <select id="loginClass">
-          <option value="">— 请选择班级 —</option>
-          <option value="雅思A班">雅思A班</option>
-          <option value="雅思B班">雅思B班</option>
-          <option value="雅思C班">雅思C班</option>
-          <option value="雅思D班">雅思D班</option>
-          <option value="雅思周末班">雅思周末班</option>
-          <option value="雅思一对一">雅思一对一</option>
-          <option value="__other__">其他（手动输入）</option>
-        </select>
-        <input type="text" id="loginClassOther" placeholder="请输入班级名称" maxlength="20" style="display:none; margin-top:8px; padding:12px 14px; background:rgba(255,255,255,0.06); border:1px solid var(--border); border-radius:10px; color:var(--text); font-size:15px; width:100%; outline:none;">
-        <div class="form-error" id="loginClassError">请选择班级</div>
-      </div>
-      <div class="form-group">
         <label for="loginPassword">密码</label>
         <input type="password" id="loginPassword" placeholder="请输入密码" maxlength="30" autocomplete="off">
         <div class="form-error" id="loginPasswordError">请输入密码</div>
@@ -544,23 +529,9 @@
     <form id="registerForm" onsubmit="return false;" style="display:none;">
       <div class="form-group">
         <label for="regName">姓名 *</label>
-        <input type="text" id="regName" placeholder="请输入真实姓名" maxlength="20" autocomplete="off">
+        <input type="text" id="regName" placeholder="请输入真实姓名（需与教师登记的一致）" maxlength="20" autocomplete="off">
         <div class="form-error" id="regNameError">请填写姓名</div>
-      </div>
-      <div class="form-group">
-        <label for="regClass">班级 *</label>
-        <select id="regClass">
-          <option value="">— 请选择班级 —</option>
-          <option value="雅思A班">雅思A班</option>
-          <option value="雅思B班">雅思B班</option>
-          <option value="雅思C班">雅思C班</option>
-          <option value="雅思D班">雅思D班</option>
-          <option value="雅思周末班">雅思周末班</option>
-          <option value="雅思一对一">雅思一对一</option>
-          <option value="__other__">其他（手动输入）</option>
-        </select>
-        <input type="text" id="regClassOther" placeholder="请输入班级名称" maxlength="20" style="display:none; margin-top:8px; padding:12px 14px; background:rgba(255,255,255,0.06); border:1px solid var(--border); border-radius:10px; color:var(--text); font-size:15px; width:100%; outline:none;">
-        <div class="form-error" id="regClassError">请选择或填写班级</div>
+        <div class="form-hint">姓名必须与教师提供的密钥登记姓名一致</div>
       </div>
       <div class="form-group">
         <label for="regPassword">密码 *</label>
@@ -608,8 +579,7 @@
 
   function isLoggedIn() {
     return localStorage.getItem(SK_LOGGED) === 'true'
-      && localStorage.getItem(SK_NAME)
-      && localStorage.getItem(SK_CLASS);
+      && localStorage.getItem(SK_NAME);
   }
 
   function getStudentId() {
@@ -625,7 +595,6 @@
   function updateUIState() {
     const logged = isLoggedIn();
     const name = localStorage.getItem(SK_NAME) || '';
-    const cls = localStorage.getItem(SK_CLASS) || '';
     const id = localStorage.getItem(SK_ID) || '';
 
     // Header nav
@@ -643,7 +612,7 @@
     const profileDisplay = document.getElementById('studentProfileDisplay');
     if (logged) {
       profileBar.style.display = 'flex';
-      profileDisplay.innerHTML = `👤 <strong>${name}</strong> · ${cls} <span style="color:var(--text-dimmer); font-size:11px; margin-left:6px;">ID: ${id.slice(0,12)}…</span>`;
+      profileDisplay.innerHTML = `👤 <strong>${name}</strong> <span style="color:var(--text-dimmer); font-size:11px; margin-left:6px;">ID: ${id.slice(0,12)}…</span>`;
     } else {
       profileBar.style.display = 'none';
     }
@@ -697,41 +666,23 @@
     document.getElementById('authSubtitle').textContent = tab === 'login' ? '输入你的信息继续学习' : '创建你的学习账号';
   }
 
-  // 班级"其他"切换
-  ['loginClass', 'regClass'].forEach(selId => {
-    document.getElementById(selId).addEventListener('change', function() {
-      const otherId = selId + 'Other';
-      const other = document.getElementById(otherId);
-      if (this.value === '__other__') {
-        other.style.display = 'block';
-        other.focus();
-      } else {
-        other.style.display = 'none';
-        other.value = '';
-      }
-    });
-  });
+  // （班级功能已移除）
 
   // ── 登录 ──
   function handleLogin() {
     const name = document.getElementById('loginName').value.trim();
-    const classSel = document.getElementById('loginClass').value;
-    const classOther = document.getElementById('loginClassOther').value.trim();
-    const cls = classSel === '__other__' ? classOther : classSel;
     const password = document.getElementById('loginPassword').value;
 
     // 验证
     let valid = true;
     document.getElementById('loginNameError').classList.toggle('show', !name);
     if (!name) valid = false;
-    document.getElementById('loginClassError').classList.toggle('show', !cls);
-    if (!cls) valid = false;
     document.getElementById('loginPasswordError').classList.toggle('show', !password);
     if (!password) valid = false;
     if (!valid) return;
 
     // 验证密码
-    const key = `ielts_pwd_${name}_${cls}`;
+    const key = `ielts_pwd_${name}`;
     const storedHash = localStorage.getItem(key);
 
     if (storedHash) {
@@ -747,33 +698,22 @@
       showToast('该账号未注册，请先注册', 'error');
       switchAuthTab('register');
       document.getElementById('regName').value = name;
-      // 班级也预填
-      const regSel = document.getElementById('regClass');
-      const opts = Array.from(regSel.options).map(o => o.value);
-      if (opts.includes(cls)) {
-        regSel.value = cls;
-      } else {
-        regSel.value = '__other__';
-        document.getElementById('regClassOther').value = cls;
-        document.getElementById('regClassOther').style.display = 'block';
-      }
       document.getElementById('regPassword').focus();
       return;
     }
 
     // 登录成功
-    doLogin(name, cls);
+    doLogin(name);
   }
 
-  function doLogin(name, cls) {
+  function doLogin(name) {
     const id = getStudentId();
     localStorage.setItem(SK_NAME, name);
-    localStorage.setItem(SK_CLASS, cls);
     localStorage.setItem(SK_LOGGED, 'true');
 
     // 同步 tracker
     if (typeof tracker !== 'undefined' && tracker.setStudentProfile) {
-      tracker.setStudentProfile({ name, className: cls });
+      tracker.setStudentProfile({ name, className: '' });
     }
 
     hideAuthModal();
@@ -784,9 +724,6 @@
   // ── 注册 ──
   async function handleRegister() {
     const name = document.getElementById('regName').value.trim();
-    const classSel = document.getElementById('regClass').value;
-    const classOther = document.getElementById('regClassOther').value.trim();
-    const cls = classSel === '__other__' ? classOther : classSel;
     const password = document.getElementById('regPassword').value;
     const password2 = document.getElementById('regPassword2').value;
     const regKeyVal = document.getElementById('regKey').value.trim();
@@ -795,8 +732,6 @@
     let valid = true;
     document.getElementById('regNameError').classList.toggle('show', !name);
     if (!name) valid = false;
-    document.getElementById('regClassError').classList.toggle('show', !cls);
-    if (!cls) valid = false;
     document.getElementById('regPasswordError').classList.toggle('show', password.length < 4);
     if (password.length < 4) valid = false;
     document.getElementById('regPassword2Error').classList.toggle('show', password !== password2);
@@ -826,20 +761,11 @@
     if (!valid) return;
 
     // 检查是否已注册
-    const sk = `ielts_pwd_${name}_${cls}`;
+    const sk = `ielts_pwd_${name}`;
     if (localStorage.getItem(sk)) {
-      showToast('该姓名+班级已注册，请直接登录', 'error');
+      showToast('该姓名已注册，请直接登录', 'error');
       switchAuthTab('login');
       document.getElementById('loginName').value = name;
-      const loginSel = document.getElementById('loginClass');
-      const opts = Array.from(loginSel.options).map(o => o.value);
-      if (opts.includes(cls)) {
-        loginSel.value = cls;
-      } else {
-        loginSel.value = '__other__';
-        document.getElementById('loginClassOther').value = cls;
-        document.getElementById('loginClassOther').style.display = 'block';
-      }
       document.getElementById('loginPassword').focus();
       return;
     }
@@ -850,7 +776,7 @@
     if (typeof tracker !== 'undefined' && tracker.consumeKey) {
       await tracker.consumeKey(regKeyVal, name, localStorage.getItem(SK_ID));
     }
-    doLogin(name, cls);
+    doLogin(name);
     showToast(`注册成功，欢迎 ${name}！`, 'success');
   }
 
@@ -858,7 +784,6 @@
   function handleLogout() {
     localStorage.removeItem(SK_LOGGED);
     localStorage.removeItem(SK_NAME);
-    localStorage.removeItem(SK_CLASS);
     // 注意：不清除 SK_ID、SK_HASH 和练习数据
     updateUIState();
     showAuthModal('login');
@@ -875,14 +800,12 @@
   }
 
   // ── Enter 键导航 ──
-  document.getElementById('loginName').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('loginClass').focus(); });
+  document.getElementById('loginName').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('loginPassword').focus(); });
   document.getElementById('loginPassword').addEventListener('keydown', e => { if (e.key === 'Enter') handleLogin(); });
-  document.getElementById('loginClassOther').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('loginPassword').focus(); });
-  document.getElementById('regName').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('regClass').focus(); });
+  document.getElementById('regName').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('regPassword').focus(); });
   document.getElementById('regPassword').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('regPassword2').focus(); });
   document.getElementById('regPassword2').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('regKey').focus(); });
   document.getElementById('regKey').addEventListener('keydown', e => { if (e.key === 'Enter') handleRegister(); });
-  document.getElementById('regClassOther').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('regPassword').focus(); });
 
   // ══════════════════════════════════════════
   //  初始化 Tracker + 学生身份系统
