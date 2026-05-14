@@ -433,7 +433,12 @@
       sidEl.textContent = studentId;
     }
 
-    await tracker.init({ module: 'student' });
+    await tracker.init({
+      module: 'student',
+      // Supabase 云端配置（2026-05-14 部署）
+      supabaseUrl: 'https://jhmcyiilfndpdiyutnzu.supabase.co',
+      supabaseAnonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpobWN5aWlsZm5kcGRpeXV0bnp1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3MDc5OTAsImV4cCI6MjA5NDI4Mzk5MH0.XS_Ewu1GPMYuep6X9wPdzKjtqIwQhkt9ptpv73dLWj4',
+    });
 
     await loadOverview();
     await loadReviewPlan();
