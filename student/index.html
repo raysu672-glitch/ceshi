@@ -417,29 +417,32 @@
 <script>
   // ── Init ──
   async function initStudentPage() {
+    // 初始化 tracker（必须在 isLoggedIn 之前）
+    await tracker.init({
+      module: 'student',
+      supabaseUrl: 'https://jhmcyiilfndpdiyutnzu.supabase.co',
+      supabaseAnonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpobWN5aWlsZm5kcGRpeXV0bnp1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3MDc5OTAsImV4cCI6MjA5NDI4Mzk5MH0.XS_Ewu1GPMYuep6X9wPdzKjtqIwQhkt9ptpv73dLWj4',
+    });
+
     // 登录拦截
     if (!tracker.isLoggedIn()) {
       window.location.href = '../index.html';
       return;
     }
 
-    const studentId = localStorage.getItem('ielts_student_id') || '—';
-    const studentName = localStorage.getItem('ielts_student_name') || '';
-    const studentClass = localStorage.getItem('ielts_student_class') || '';
+    // 显示学生身份：真实姓名为主，@username 为辅
+    const realName = tracker.getStudentName() || '';
+    const username = tracker.getUsername() || '';
     const sidEl = document.getElementById('sidTag');
-    if (studentName) {
-      sidEl.textContent = studentClass ? `${studentName} · ${studentClass}` : studentName;
+    if (realName && username) {
+      sidEl.textContent = `${realName} · @${username}`;
       sidEl.style.fontFamily = 'inherit';
-    } else {
-      sidEl.textContent = studentId;
+    } else if (realName) {
+      sidEl.textContent = realName;
+      sidEl.style.fontFamily = 'inherit';
+    } else if (username) {
+      sidEl.textContent = `@${username}`;
     }
-
-    await tracker.init({
-      module: 'student',
-      // Supabase 云端配置（2026-05-14 部署）
-      supabaseUrl: 'https://jhmcyiilfndpdiyutnzu.supabase.co',
-      supabaseAnonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpobWN5aWlsZm5kcGRpeXV0bnp1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3MDc5OTAsImV4cCI6MjA5NDI4Mzk5MH0.XS_Ewu1GPMYuep6X9wPdzKjtqIwQhkt9ptpv73dLWj4',
-    });
 
     await loadOverview();
     await loadReviewPlan();

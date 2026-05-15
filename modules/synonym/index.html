@@ -703,25 +703,27 @@
 // ============================================================
 const TRACKER_CONFIG = {
   module: 'synonym',
-  // Supabase 云端配置（2026-05-14 部署）
   supabaseUrl: 'https://jhmcyiilfndpdiyutnzu.supabase.co',
   supabaseAnonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpobWN5aWlsZm5kcGRpeXV0bnp1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3MDc5OTAsImV4cCI6MjA5NDI4Mzk5MH0.XS_Ewu1GPMYuep6X9wPdzKjtqIwQhkt9ptpv73dLWj4',
 };
-tracker.init(TRACKER_CONFIG);
 
-// 登录拦截
-if (!tracker.isLoggedIn()) {
-  window.location.href = '../../index.html';
-}
+// 初始化 tracker 并检查登录
+(async function initAuth() {
+  await tracker.init(TRACKER_CONFIG);
 
-// 显示学生身份
-(function() {
-  const name = localStorage.getItem('ielts_student_name') || '';
-  const cls = localStorage.getItem('ielts_student_class') || '';
+  // 登录拦截
+  if (!tracker.isLoggedIn()) {
+    window.location.href = '../../index.html';
+    return;
+  }
+
+  // 显示学生身份：真实姓名为主，@username 为辅
+  const realName = tracker.getStudentName() || '';
+  const username = tracker.getUsername() || '';
   const tag = document.getElementById('synStudentTag');
-  if (name && cls) tag.textContent = `${name} · ${cls}`;
-  else if (name) tag.textContent = name;
-  else tag.textContent = (localStorage.getItem('ielts_student_id') || '').slice(0, 10);
+  if (realName && username) tag.textContent = `${realName} · @${username}`;
+  else if (realName) tag.textContent = realName;
+  else if (username) tag.textContent = `@${username}`;
 })();
 
 // 记录每个回答的计时起点

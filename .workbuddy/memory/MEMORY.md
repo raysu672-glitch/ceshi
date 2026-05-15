@@ -5,17 +5,19 @@
 - **路径**: G:\网站\同义替换\
 - **类型**: 多模块教育训练平台，模块化架构
 
-## 目录结构（2026-05-13 重构）
+## 目录结构（2026-05-15 v2 重构）
 ```
 G:\网站\同义替换\
-├── index.html              ← 平台入口（登录/注册 + 模块导航）
-├── shared/tracker.js       ← 统一埋点 SDK v3（含遗忘曲线）
+├── index.html              ← 平台入口（用户名+密码登录/注册 + 密钥绑定）
+├── shared/tracker.js       ← 统一埋点 SDK v6（含认证+遗忘曲线+密钥）
 ├── modules/synonym/        ← 同义替换模块（随机+复习双模式）
 │   └── index.html
 ├── modules/sentence/       ← 长难句模块（待开发）
-├── admin/index.html        ← 教师管理端（5个Tab）
+├── admin/index.html        ← 教师管理端（5个Tab+Excel导出）
 ├── student/index.html      ← 学生历史页（4个Tab）
-└── supabase/schema.sql     ← 数据库 Schema
+└── supabase/
+    ├── schema.sql          ← 数据库 Schema（= full_schema.sql）
+    └── full_schema.sql     ← 完整可执行 Schema
 ```
 
 ## 技术决策
@@ -25,41 +27,63 @@ G:\网站\同义替换\
 - **Supabase**：PostgreSQL + RLS 行级安全 + 实时订阅
 - 暗色主题 + 霓虹效果的游戏化风格
 - Web Audio API 生成音效，Canvas 粒子特效
-- 学生 ID 自动生成（localStorage 持久化）
-- **学生身份系统**：注册（姓名+班级+密码）→ 登录验证 → 退出切换
-  - 密码简单 hash 存 localStorage，key: `ielts_pwd_{name}_{class}`
-  - 未登录时模块卡片灰掉不可点击
-  - 子页面（student/synonym）检查登录状态，未登录跳转入口
-  - tracker.isLoggedIn() / tracker.logout() / tracker.setStudentProfile()
+- **v2 学生身份系统**（2026-05-15 重构）：
+  - 用户名+密码登录（替代姓名+密码）
+  - 密码 SHA-256 哈希存 Supabase students.password_hash
+  - 密码原文存 students.password_raw（管理员可查，学生忘了帮忙找）
+  - 注册时一步绑定密钥+身份确认
+  - 会话管理：session_token + session_expires
+  - 记住我：7天 / 默认2小时
+  - 登录失败5次锁定15分钟
 
-## Tracker SDK v3（2026-05-13）
+## Tracker SDK v6（2026-05-15）
 - `tracker.init({ module, supabaseUrl?, supabaseAnonKey? })`
 - `tracker.startSession(meta)` / `tracker.endSession(summary)`
 - `tracker.event('answer'|'skip'|..., { itemKey, correct, responseMs, combo })`
 - 离线安全：先写 IndexedDB（event_queue + practice_history + memory_states），5秒批量上报
-- 自动生成 studentId（stu_xxx 格式）
-- 学生身份：isLoggedIn / logout / setStudentProfile / getStudentName / getStudentClass
+- 学生 ID 自动生成（stu_xxx 格式）
+- **v6 认证系统**：
+  - `sha256(message)` — SHA-256 哈希（Web Crypto API）
+  - `registerStudent(username, password)` — 注册（调 register_student RPC）
+  - `loginStudent(username, password, rememberMe)` — 登录（调 login_student RPC）
+  - `createSession(rememberMe)` — 创建会话
+  - `checkUsernameExists(username)` — 检查用户名唯一性
+  - `validateKey(keyString)` — 验证密钥（返回 studentName/className/courseId）
+  - `bindKeyToStudent(studentId, keyString, realName)` — 绑定密钥
+  - `isLoggedIn()` — 检查 session 有效性
+  - `logout()` — 清除 session（Supabase + localStorage）
+  - `getUsername()` / `getStudentName()` / `getStudentClass()`
+  - `setStudentProfile({ name, username, className })`
 - 本地聚合：getDailyStats / getErrorItems / getBehaviorProfile / getSessionSummaries / getWrongAnswers
-- 远程查询（管理端）：getStudentsOverview / getErrorHeatmap
-- **v3 新增**：遗忘曲线 API
-  - `updateMemoryState(itemKey, correct, responseMs)` — 答题后自动调用
-  - `getDueItems(limit)` — 获取待复习词组（优先级排序）
-  - `getReviewSchedule()` — 获取7天复习日程
-  - `getMemoryOverview()` — 获取记忆状态概览
-  - `getAllMemoryStates()` — 获取所有记忆状态
-- **v3 遗忘曲线算法**：
-  - 间隔序列：1→2→4→7→15→30→60→120 天
-  - 正确 → 递增间隔，降低难度
-  - 错误 → 重置为0，10分钟后重新复习
-  - 保持率 = exp(-经过天数 / 稳定度)
+- 管理端：getAdminStudentsOverview / getAdminDailyStats / getAdminBehaviorProfile / getErrorHeatmap
+- 遗忘曲线 API：updateMemoryState / getDueItems / getReviewSchedule / getMemoryOverview / getAllMemoryStates
+- **v6 密钥管理**：
+  - `batchGenerateKeys(count, courseName?, className?, expiresAt?)` — 批量生成（调 batch_generate_keys RPC）
+  - `getKeys()` — 获取所有密钥（从 v_access_keys 视图）
+  - `revokeKey(key)` — 撤销密钥
+  - `adminLookupPassword(username)` — 管理员查询密码原文
 
-## 数据库 Schema（2026-05-13）
+## 数据库 Schema v2（2026-05-15）
 - `modules` 表：模块注册（synonym, sentence, ...）
-- `students` 表：学生信息（含 class_name）
+- `students` 表：**id, username(UNIQUE), password_hash, password_raw, real_name, class_name, bound_key_id(FK), failed_attempts, locked_until, session_token, session_expires, created_at, last_active**
+- `access_keys` 表：**新增 course_name, expires_at, batch_id**
 - `practice_events` 表：统一事件表（JSONB payload）
 - `memory_states` 表：艾宾浩斯遗忘状态
-- 视图：`v_student_summary`, `v_error_heatmap`, `v_behavior_profile`
+- 视图：`v_student_summary`(含 username, real_name, bound_key, bound_course), `v_error_heatmap`, `v_behavior_profile`, `v_access_keys`(含 course_name, expires_at, batch_id, expired 状态)
 - 函数：`upsert_memory_state()` 更新遗忘曲线
+- RPC 函数（SECURITY DEFINER）：
+  - `register_student(p_id, p_username, p_password_hash, p_password_raw)` — 注册
+  - `login_student(p_username, p_password_hash)` — 登录+失败锁定
+  - `bind_key_to_student(p_student_id, p_key_string, p_real_name)` — 密钥绑定
+  - `batch_generate_keys(p_count, p_course_name, p_class_name, p_batch_id, p_expires_at)` — 批量生成
+  - `check_username_exists(p_username)` — 用户名查重
+  - `admin_lookup_password(p_username)` — 管理员查密码
+  - `get_admin_students_summary()` — 学生摘要（含 username, real_name, bound_key, course）
+  - `get_admin_daily_stats(days_int)` — 每日统计
+  - `get_admin_behavior_profile()` — 行为画像
+  - `get_admin_error_heatmap()` — 错误热力图
+  - `get_admin_memory_overview()` — 记忆状态概览
+- RLS 策略：students/access_keys 用 `FOR ALL USING (true) WITH CHECK (true)`，其余相同
 
 ## 同义替换模块
 - 词库内嵌在 JS 中，约160组同义替换词

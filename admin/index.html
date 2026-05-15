@@ -3,8 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://*.supabase.co; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://*.supabase.co; script-src 'self' 'unsafe-inline' https://cdn.sheetjs.com; style-src 'self' 'unsafe-inline';">
 <title>教师管理端 — 雅思训练平台</title>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
@@ -362,6 +363,7 @@
   .key-badge.unused { background: rgba(34,211,167,0.15); color: var(--green); border: 1px solid rgba(34,211,167,0.3); }
   .key-badge.used { background: rgba(100,116,139,0.15); color: var(--text-dim); border: 1px solid rgba(100,116,139,0.2); }
   .key-badge.revoked { background: rgba(244,63,94,0.15); color: var(--red); border: 1px solid rgba(244,63,94,0.3); }
+  .key-badge.expired { background: rgba(251,191,36,0.15); color: var(--gold); border: 1px solid rgba(251,191,36,0.3); }
   .copy-btn {
     background: none; border: 1px solid var(--border);
     color: var(--blue); border-radius: 6px;
@@ -396,11 +398,51 @@
   }
   .gen-btn:hover { transform: scale(1.03); }
   .gen-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+  .export-btn {
+    padding: 8px 18px; border-radius: 8px; font-size: 13px;
+    font-weight: 600; cursor: pointer; border: 1px solid var(--green);
+    background: rgba(34,211,167,0.1);
+    color: var(--green); transition: all 0.15s;
+    margin-left: 8px;
+  }
+  .export-btn:hover { background: rgba(34,211,167,0.2); }
+
+  /* Student search/filter bar */
+  .filter-bar {
+    display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+    margin-bottom: 16px;
+  }
+  .filter-bar input, .filter-bar select {
+    background: var(--bg-card2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 8px 12px; color: var(--text);
+    font-size: 13px; outline: none;
+  }
+  .filter-bar input:focus, .filter-bar select:focus { border-color: var(--gold); }
+  .filter-bar input { width: 200px; }
+  .filter-bar select { min-width: 140px; }
+
+  .pw-btn {
+    background: none; border: 1px solid var(--border);
+    color: var(--purple); border-radius: 6px;
+    padding: 3px 10px; cursor: pointer; font-size: 12px;
+    transition: all 0.2s;
+  }
+  .pw-btn:hover { border-color: var(--purple); background: rgba(139,92,246,0.1); }
+
+  /* Stats report btn */
+  .report-btn {
+    padding: 8px 18px; border-radius: 8px; font-size: 13px;
+    font-weight: 600; cursor: pointer; border: 1px solid var(--blue);
+    background: rgba(56,189,248,0.1);
+    color: var(--blue); transition: all 0.15s;
+  }
+  .report-btn:hover { background: rgba(56,189,248,0.2); }
 
   @media (max-width: 640px) {
     .stats-row { grid-template-columns: repeat(2, 1fr); }
     .heatmap-key { width: 120px; font-size: 12px; }
     .config-field input { width: 160px; }
+    .filter-bar input { width: 140px; }
   }
 
   /* Toast */
@@ -447,7 +489,6 @@
   <button class="tab-btn" data-tab="students">👥 学生画像</button>
   <button class="tab-btn" data-tab="heatmap">🔥 错题热力图</button>
   <button class="tab-btn" data-tab="memory">🧠 遗忘曲线</button>
-  <button class="tab-btn" data-tab="settings">⚙️ 设置</button>
   <button class="tab-btn" data-tab="keys">🔑 密钥管理</button>
 </div>
 
@@ -471,7 +512,16 @@
   <!-- Tab: Students -->
   <div class="tab-panel" id="tab-students">
     <div class="card">
-      <div class="card-title"><span class="icon">👥</span> 学生行为画像</div>
+      <div class="card-title">
+        <span class="icon">👥</span> 学生行为画像
+        <button class="report-btn" style="margin-left:auto;" onclick="exportStudentReport()">📥 导出统计报告</button>
+      </div>
+      <div class="filter-bar">
+        <input type="text" id="studentSearch" placeholder="搜索姓名/用户名..." oninput="renderStudentsTable()">
+        <select id="batchFilter" onchange="renderStudentsTable()">
+          <option value="">全部批次</option>
+        </select>
+      </div>
       <div id="studentsTable">
         <div class="empty-state"><span class="icon">📭</span>暂无学生数据<br><small>学生开始练习后数据将自动出现</small></div>
       </div>
@@ -520,38 +570,6 @@
     </div>
   </div>
 
-  <!-- Tab: Settings -->
-  <div class="tab-panel" id="tab-settings">
-    <div class="card">
-      <div class="card-title"><span class="icon">🔗</span> Supabase 连接配置</div>
-      <div class="config-section">
-        <div class="config-field">
-          <label>Project URL</label>
-          <input type="text" id="cfgUrl" placeholder="https://xxx.supabase.co">
-        </div>
-        <div class="config-field">
-          <label>Anon Key</label>
-          <input type="text" id="cfgKey" placeholder="eyJ...">
-        </div>
-        <button class="config-btn" onclick="saveConfig()">保存并连接</button>
-      </div>
-      <div class="config-status" id="cfgStatus"></div>
-    </div>
-
-    <div class="card" style="margin-top:16px;">
-      <div class="card-title"><span class="icon">ℹ️</span> 数据说明</div>
-      <p style="font-size:13px;color:var(--text-dim);line-height:1.8;">
-        • 未配置 Supabase 时，管理端仅显示当前浏览器的本地练习数据<br>
-        • 配置 Supabase 后，可查看所有学生的跨设备练习数据<br>
-        • 学生数据通过 <code style="background:var(--bg-card2);padding:2px 6px;border-radius:4px;">tracker.js</code> SDK 自动采集并上报<br>
-        • 遗忘曲线基于艾宾浩斯间隔重复算法（SM-2 简化版），间隔：1→2→4→7→15→30→60→120 天<br>
-        • 数据库 Schema 详见 <code style="background:var(--bg-card2);padding:2px 6px;border-radius:4px;">supabase/schema.sql</code>
-      </p>
-    </div>
-  </div>
-
-</div>
-
   <!-- Tab: Keys -->
   <div class="tab-panel" id="tab-keys">
     <div class="key-stats-row" id="keysStats">
@@ -559,34 +577,48 @@
       <div class="key-stat-card"><div class="stat-value green" id="key-unused">—</div><div class="stat-label">未使用</div></div>
       <div class="key-stat-card"><div class="stat-value" style="color:var(--text-dim);" id="key-used">—</div><div class="stat-label">已使用</div></div>
       <div class="key-stat-card"><div class="stat-value red" id="key-revoked">—</div><div class="stat-label">已撤销</div></div>
+      <div class="key-stat-card"><div class="stat-value gold" id="key-expired">—</div><div class="stat-label">已过期</div></div>
     </div>
 
     <div class="card">
-      <div class="card-title"><span class="icon">🔑</span> 生成密钥</div>
+      <div class="card-title"><span class="icon">🔑</span> 批量生成密钥</div>
       <div class="gen-form" id="genForm">
         <div class="config-field">
           <label>生成数量</label>
-          <input type="number" id="genCount" value="1" min="1" max="50" style="width:80px;text-align:center;">
+          <select id="genCount">
+            <option value="50">50</option>
+            <option value="100">100</option>
+            <option value="500">500</option>
+          </select>
         </div>
         <div class="config-field">
-          <label>学生注册姓名（可选，备注用）</label>
-          <input type="text" id="genStudent" placeholder="如：学生自己填写的姓名">
+          <label>课程名称</label>
+          <input type="text" id="genCourseName" placeholder="如：雅思写作强化班">
         </div>
         <div class="config-field">
-          <label>学生真实姓名（可选，备注用）</label>
-          <input type="text" id="genRealName" placeholder="如：张三（仅教师可见）">
+          <label>班级名称</label>
+          <input type="text" id="genClassName" placeholder="如：2026春季班">
         </div>
-        <button class="gen-btn" id="genBtn" onclick="handleGenerateKeys()">生成密钥</button>
+        <div class="config-field">
+          <label>过期时间</label>
+          <input type="date" id="genExpiresAt">
+        </div>
+        <button class="gen-btn" id="genBtn" onclick="handleBatchGenerateKeys()">批量生成</button>
       </div>
     </div>
 
     <div class="card" style="margin-top:16px;">
-      <div class="card-title"><span class="icon">📋</span> 密钥列表</div>
+      <div class="card-title">
+        <span class="icon">📋</span> 密钥列表
+        <button class="export-btn" onclick="exportKeysToExcel()">📥 导出Excel</button>
+      </div>
       <div id="keysTable">
         <div class="empty-state"><span class="icon">📭</span>暂无密钥数据<br><small>生成密钥后将显示在此处</small></div>
       </div>
     </div>
   </div>
+
+</div>
 
 <!-- Student Detail Modal -->
 <div class="modal-overlay" id="studentModal">
@@ -599,23 +631,25 @@
   </div>
 </div>
 
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
 <script src="../shared/tracker.js"></script>
 <script>
   // ── Config ──
   const CONFIG_KEY_URL = 'ielts_admin_supabase_url';
   const CONFIG_KEY_KEY = 'ielts_admin_supabase_key';
 
-  // 默认 Supabase 云端配置（2026-05-14 部署）
   const DEFAULT_SUPABASE_URL = 'https://jhmcyiilfndpdiyutnzu.supabase.co';
   const DEFAULT_SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpobWN5aWlsZm5kcGRpeXV0bnp1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3MDc5OTAsImV4cCI6MjA5NDI4Mzk5MH0.XS_Ewu1GPMYuep6X9wPdzKjtqIwQhkt9ptpv73dLWj4';
 
   let adminTracker = null;
+  let _allStudents = [];
+  let _allKeys = [];
 
   async function initAdminTracker() {
     const url = localStorage.getItem(CONFIG_KEY_URL) || DEFAULT_SUPABASE_URL;
     const key = localStorage.getItem(CONFIG_KEY_KEY) || DEFAULT_SUPABASE_KEY;
-    document.getElementById('cfgUrl').value = url;
-    document.getElementById('cfgKey').value = key;
 
     adminTracker = tracker;
     await adminTracker.init({
@@ -627,28 +661,6 @@
     loadAllData();
   }
 
-  async function saveConfig() {
-    const url = document.getElementById('cfgUrl').value.trim();
-    const key = document.getElementById('cfgKey').value.trim();
-    localStorage.setItem(CONFIG_KEY_URL, url);
-    localStorage.setItem(CONFIG_KEY_KEY, key);
-    document.getElementById('cfgStatus').className = 'config-status ok';
-    document.getElementById('cfgStatus').textContent = '✓ 配置已保存，正在重新连接...';
-
-    // 重新初始化
-    adminTracker.destroy();
-    await adminTracker.init({
-      module: 'admin',
-      supabaseUrl: url,
-      supabaseAnonKey: key,
-    });
-    loadAllData();
-
-    setTimeout(() => {
-      document.getElementById('cfgStatus').textContent = '✓ 连接成功';
-    }, 1500);
-  }
-
   // ── Tabs ──
   document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -657,6 +669,7 @@
       btn.classList.add('active');
       document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
       if (btn.dataset.tab === 'keys') loadKeys();
+      if (btn.dataset.tab === 'students') loadStudents();
     });
   });
 
@@ -705,9 +718,7 @@
     const chartW = W - padL - padR;
     const chartH = H - padT - padB;
 
-    // Find max
     const maxAnswers = Math.max(1, ...stats.map(s => s.answers));
-    const maxAcc = 100;
 
     // Grid
     ctx.strokeStyle = 'rgba(255,255,255,0.06)';
@@ -723,11 +734,11 @@
     ctx.textAlign = 'center';
     stats.forEach((s, i) => {
       const x = padL + (chartW / (stats.length - 1 || 1)) * i;
-      const label = s.date.slice(5); // MM-DD
+      const label = s.date.slice(5);
       ctx.fillText(label, x, H - 8);
     });
 
-    // Y labels (left: answers)
+    // Y labels
     ctx.textAlign = 'right';
     ctx.fillStyle = '#8b5cf6';
     for (let i = 0; i <= 4; i++) {
@@ -736,7 +747,7 @@
       ctx.fillText(val, padL - 8, y);
     }
 
-    // Bars (answers)
+    // Bars
     const barW = Math.min(30, chartW / stats.length * 0.6);
     stats.forEach((s, i) => {
       const x = padL + (chartW / (stats.length - 1 || 1)) * i;
@@ -744,10 +755,8 @@
       const wrongH = maxAnswers > 0 ? (s.wrong / maxAnswers) * chartH : 0;
       const totalH = correctH + wrongH;
 
-      // Correct portion
       ctx.fillStyle = 'rgba(34,211,167,0.7)';
       ctx.fillRect(x - barW/2, padT + chartH - totalH, barW, correctH);
-      // Wrong portion
       ctx.fillStyle = 'rgba(244,63,94,0.6)';
       ctx.fillRect(x - barW/2, padT + chartH - wrongH, barW, wrongH);
     });
@@ -793,38 +802,177 @@
   // ── Students ──
   async function loadStudents() {
     const overview = await adminTracker.getAdminStudentsOverview();
-    const container = document.getElementById('studentsTable');
+    _allStudents = overview || [];
+    populateBatchFilter();
+    renderStudentsTable();
+  }
 
-    if (overview.length === 0) {
+  function populateBatchFilter() {
+    const select = document.getElementById('batchFilter');
+    if (!select) return;
+    const currentVal = select.value;
+    // Collect batch_ids from keys data
+    const batchIds = [...new Set(_allKeys.map(k => k.batch_id).filter(Boolean))];
+    select.innerHTML = '<option value="">全部批次</option>';
+    batchIds.sort().forEach(bid => {
+      const opt = document.createElement('option');
+      opt.value = bid;
+      opt.textContent = bid;
+      select.appendChild(opt);
+    });
+    select.value = currentVal;
+  }
+
+  function renderStudentsTable() {
+    const container = document.getElementById('studentsTable');
+    const searchVal = (document.getElementById('studentSearch')?.value || '').trim().toLowerCase();
+    const batchVal = document.getElementById('batchFilter')?.value || '';
+
+    let students = [..._allStudents];
+
+    // Filter by search
+    if (searchVal) {
+      students = students.filter(s =>
+        (s.real_name || '').toLowerCase().includes(searchVal) ||
+        (s.username || '').toLowerCase().includes(searchVal)
+      );
+    }
+
+    // Filter by batch_id (via bound_key lookup)
+    if (batchVal) {
+      const keysInBatch = _allKeys.filter(k => k.batch_id === batchVal && k.used_by);
+      const usernamesInBatch = new Set(keysInBatch.map(k => k.used_by));
+      students = students.filter(s => usernamesInBatch.has(s.username));
+    }
+
+    if (students.length === 0) {
       container.innerHTML = '<div class="empty-state"><span class="icon">📭</span>暂无学生数据</div>';
       return;
     }
 
     let html = `<table class="data-table">
       <thead><tr>
-        <th>姓名</th><th>总答题</th><th>正确率</th><th>平均响应</th><th>轮次</th><th>类型</th><th></th>
+        <th>真实姓名</th><th>用户名</th><th>班级</th><th>绑定密钥</th><th>绑定课程</th>
+        <th>轮次</th><th>总答题</th><th>正确率</th><th>平均响应</th><th>最后活跃</th><th>类型</th><th>操作</th>
       </tr></thead><tbody>`;
 
-    overview.forEach(s => {
+    students.forEach(s => {
       const type = s.behavior_type || 'balanced';
       const badge = type === 'cautious' ? '谨慎型' : type === 'impulsive' ? '冲动型' : '均衡型';
       const accPct = s.accuracy_pct != null ? s.accuracy_pct + '%' : '—';
       const avgMs = s.avg_response_ms ? (s.avg_response_ms / 1000).toFixed(1) + 's' : '—';
-      const displayName = s.display_name || '—';
+      const lastActive = s.last_active ? new Date(s.last_active).toLocaleString('zh-CN', { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' }) : '—';
+      const realName = s.real_name || '—';
+      const username = s.username || '—';
+      const boundKey = s.bound_key || '—';
+      const boundCourse = s.bound_course || '—';
+      const className = s.class_name || '—';
+      const safeUsername = (username || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
 
       html += `<tr>
-        <td style="color:var(--text);font-weight:500;">${displayName}</td>
+        <td style="color:var(--text);font-weight:500;">${realName}</td>
+        <td style="font-family:monospace;font-size:12px;">${username}</td>
+        <td>${className}</td>
+        <td style="color:var(--purple);font-family:monospace;font-size:12px;">${boundKey}</td>
+        <td>${boundCourse}</td>
+        <td>${s.total_sessions || 0}</td>
         <td>${s.total_answers || 0}</td>
         <td>${accPct}</td>
         <td>${avgMs}</td>
-        <td>${s.total_sessions || 0}</td>
+        <td style="font-size:11px;color:var(--text-dimmer);">${lastActive}</td>
         <td><span class="badge ${type}">${badge}</span></td>
-        <td><button style="background:none;border:1px solid var(--border);color:var(--text-dim);padding:4px 10px;border-radius:6px;cursor:pointer;font-size:12px;" onclick="showStudentDetail('${s.student_id}')">详情</button></td>
+        <td>
+          <button class="pw-btn" onclick="lookupPassword('${safeUsername}')">查看密码</button>
+          <button style="background:none;border:1px solid var(--border);color:var(--text-dim);padding:4px 10px;border-radius:6px;cursor:pointer;font-size:12px;margin-left:4px;" onclick="showStudentDetail('${(s.student_id || '').replace(/'/g, "\\'")}')">详情</button>
+        </td>
       </tr>`;
     });
 
     html += '</tbody></table>';
     container.innerHTML = html;
+  }
+
+  async function lookupPassword(username) {
+    if (!username || username === '—') {
+      showToast('无有效用户名', 'error');
+      return;
+    }
+    try {
+      const pw = await adminTracker.adminLookupPassword(username);
+      if (pw) {
+        alert(`用户 ${username} 的密码：${pw}`);
+      } else {
+        alert(`未找到用户 ${username} 的密码记录`);
+      }
+    } catch (e) {
+      showToast('查询失败：' + (e.message || e), 'error');
+    }
+  }
+
+  // ── Student Detail Modal ──
+  async function showStudentDetail(studentId) {
+    const modal = document.getElementById('studentModal');
+    const content = document.getElementById('modalContent');
+
+    const student = _allStudents.find(s => s.student_id === studentId);
+    const displayName = student?.real_name || student?.username || studentId.slice(0, 16);
+    document.getElementById('modalStudentName').textContent = `学生 ${displayName}`;
+
+    const totalAnswers = student?.total_answers || 0;
+    const accuracy = student?.accuracy_pct || 0;
+    const avgMs = student?.avg_response_ms || 0;
+
+    let html = `
+      <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;">
+        <div class="stat-card" style="flex:1;min-width:100px;"><div class="stat-value green">${accuracy}%</div><div class="stat-label">正确率</div></div>
+        <div class="stat-card" style="flex:1;min-width:100px;"><div class="stat-value gold">${totalAnswers}</div><div class="stat-label">总答题</div></div>
+        <div class="stat-card" style="flex:1;min-width:100px;"><div class="stat-value purple">${student?.total_sessions || 0}</div><div class="stat-label">轮次</div></div>
+      </div>
+      <div style="margin-bottom:16px;display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--text-dim);">
+        <span>用户名：<strong style="color:var(--text);">${student?.username || '—'}</strong></span>
+        <span>班级：<strong style="color:var(--text);">${student?.class_name || '—'}</strong></span>
+        <span>绑定密钥：<strong style="color:var(--purple);font-family:monospace;">${student?.bound_key || '—'}</strong></span>
+        <span>绑定课程：<strong style="color:var(--text);">${student?.bound_course || '—'}</strong></span>
+      </div>
+      <div style="font-size:13px;color:var(--text-dim);margin-bottom:12px;">
+        平均响应时间：${avgMs ? (avgMs/1000).toFixed(1) + 's' : '—'}<br>
+        最后活跃：${student?.last_active ? new Date(student.last_active).toLocaleString('zh-CN') : '—'}
+      </div>
+      <div style="font-size:13px;color:var(--text-dimmer);padding:8px 0;">
+        详细行为画像和错题记录功能开发中...
+      </div>`;
+
+    content.innerHTML = html;
+    modal.classList.add('show');
+  }
+
+  function closeModal() {
+    document.getElementById('studentModal').classList.remove('show');
+  }
+
+  document.getElementById('studentModal').addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) closeModal();
+  });
+
+  // ── Export Student Report ──
+  function exportStudentReport() {
+    if (_allStudents.length === 0) {
+      showToast('暂无学生数据可导出', 'error');
+      return;
+    }
+    const data = _allStudents.map(s => ({
+      '真实姓名': s.real_name || '',
+      '用户名': s.username || '',
+      '绑定密钥': s.bound_key || '',
+      '课程名称': s.bound_course || '',
+      '正确率': s.accuracy_pct != null ? s.accuracy_pct + '%' : '',
+      '最后活跃': s.last_active || '',
+    }));
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, '学生统计报告');
+    XLSX.writeFile(wb, `学生统计报告_${new Date().toISOString().slice(0,10)}.xlsx`);
+    showToast('报告已导出', 'success');
   }
 
   // ── Heatmap ──
@@ -856,7 +1004,7 @@
 
   // ── Memory / Forgetting Curve ──
   async function loadMemory() {
-    const overview = await adminTracker.getMemoryOverview();
+    const overview = await adminTracker.getAdminMemoryOverview();
     const allStates = await adminTracker.getAllMemoryStates();
     const schedule = await adminTracker.getReviewSchedule();
 
@@ -904,7 +1052,6 @@
       retentionEl.innerHTML = '<div class="empty-state"><span class="icon">📭</span>暂无记忆保持率数据</div>';
     } else {
       const now = Date.now();
-      // Sort by retention (ascending = worst first)
       const sorted = [...allStates].map(s => {
         const daysSince = (now - s.lastReview) / (24 * 60 * 60 * 1000);
         const retention = Math.exp(-daysSince / Math.max(s.stability, 0.5));
@@ -915,7 +1062,6 @@
       sorted.slice(0, 30).forEach(item => {
         const retPct = Math.round(item.currentRetention * 100);
         const color = retPct >= 70 ? 'var(--green)' : retPct >= 40 ? 'var(--gold)' : 'var(--red)';
-        const diffPct = Math.round(item.difficulty * 100);
         const nextDate = item.nextReview > 0
           ? new Date(item.nextReview).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' })
           : '—';
@@ -959,49 +1105,6 @@
     }
   }
 
-  // ── Student Detail Modal ──
-  async function showStudentDetail(studentId) {
-    const modal = document.getElementById('studentModal');
-    const content = document.getElementById('modalContent');
-
-    // 从远程数据获取学生信息
-    const overview = await adminTracker.getAdminStudentsOverview();
-    const student = overview.find(s => s.student_id === studentId);
-    const displayName = student?.display_name || studentId.slice(0, 16);
-    document.getElementById('modalStudentName').textContent = `学生 ${displayName}`;
-
-    // 显示基本信息（详细行为画像功能开发中）
-    const totalAnswers = student?.total_answers || 0;
-    const correctAnswers = student?.correct_answers || 0;
-    const accuracy = student?.accuracy_pct || 0;
-    const avgMs = student?.avg_response_ms || 0;
-
-    let html = `
-      <div style="display:flex;gap:12px;margin-bottom:16px;">
-        <div class="stat-card" style="flex:1;"><div class="stat-value green">${correctAnswers}</div><div class="stat-label">正确</div></div>
-        <div class="stat-card" style="flex:1;"><div class="stat-value red">${totalAnswers - correctAnswers}</div><div class="stat-label">错误</div></div>
-        <div class="stat-card" style="flex:1;"><div class="stat-value gold">${accuracy}%</div><div class="stat-label">正确率</div></div>
-      </div>
-      <div style="margin-bottom:16px;">
-        <span style="font-size:13px;color:var(--text-dim);">平均响应时间：${avgMs ? (avgMs/1000).toFixed(1) + 's' : '—'}</span>
-      </div>
-      <div style="font-size:13px;color:var(--text-dimmer);padding:8px 0;">
-        详细行为画像和错题记录功能开发中...
-      </div>`;
-
-    content.innerHTML = html;
-    modal.classList.add('show');
-  }
-
-  function closeModal() {
-    document.getElementById('studentModal').classList.remove('show');
-  }
-
-  // Close on overlay click
-  document.getElementById('studentModal').addEventListener('click', (e) => {
-    if (e.target === e.currentTarget) closeModal();
-  });
-
   // ── Toast ──
   function showToast(msg, type) {
     const el = document.getElementById('toast');
@@ -1016,26 +1119,45 @@
   async function loadKeys() {
     try {
       const keys = await adminTracker.getKeys();
-      updateKeysStats(keys);
-      renderKeysTable(keys);
+      _allKeys = keys || [];
+      updateKeysStats(_allKeys);
+      renderKeysTable(_allKeys);
+      populateBatchFilter();
     } catch (e) {
       console.error('Failed to load keys:', e);
     }
   }
 
+  function getKeyStatus(k) {
+    const isRevoked = !k.is_active;
+    const isUsed = k.used_by && !isRevoked;
+    const isExpired = !isRevoked && !isUsed && k.expires_at && new Date(k.expires_at) < new Date();
+    if (isRevoked) return { status: 'revoked', text: '已撤销' };
+    if (isUsed) return { status: 'used', text: '已使用' };
+    if (isExpired) return { status: 'expired', text: '已过期' };
+    return { status: 'unused', text: '未使用' };
+  }
+
   function updateKeysStats(keys) {
     const total = keys.length;
-    const unused = keys.filter(k => k.is_active && !k.used_by).length;
-    const used = keys.filter(k => k.used_by).length;
-    const revoked = keys.filter(k => !k.is_active).length;
+    let unused = 0, used = 0, revoked = 0, expired = 0;
+    keys.forEach(k => {
+      const s = getKeyStatus(k);
+      if (s.status === 'unused') unused++;
+      else if (s.status === 'used') used++;
+      else if (s.status === 'revoked') revoked++;
+      else if (s.status === 'expired') expired++;
+    });
     const tEl = document.getElementById('key-total');
     const uEl = document.getElementById('key-unused');
     const usEl = document.getElementById('key-used');
     const rEl = document.getElementById('key-revoked');
+    const eEl = document.getElementById('key-expired');
     if (tEl) tEl.textContent = total;
     if (uEl) uEl.textContent = unused;
     if (usEl) usEl.textContent = used;
     if (rEl) rEl.textContent = revoked;
+    if (eEl) eEl.textContent = expired;
   }
 
   function renderKeysTable(keys) {
@@ -1047,29 +1169,28 @@
     }
     let html = `<table class="key-table">
       <thead><tr>
-        <th>密钥</th><th>注册姓名</th><th>真实姓名</th>
-        <th>状态</th><th>使用者</th><th>使用时间</th><th>操作</th>
+        <th>密钥</th><th>课程</th><th>班级</th><th>预设姓名</th>
+        <th>状态</th><th>使用者</th><th>使用时间</th><th>过期时间</th><th>批次ID</th><th>操作</th>
       </tr></thead><tbody>`;
     keys.forEach(k => {
-      const isRevoked = !k.is_active;
-      const isUsed = k.used_by && !isRevoked;
-      const status = isRevoked ? 'revoked' : isUsed ? 'used' : 'unused';
-      const statusText = isRevoked ? '已撤销' : isUsed ? '已使用' : '未使用';
-      const preS = k.student_name || '—';
-      const realName = k.class_name || '—';  // class_name 字段存储真实姓名
-      const user = k.used_by || '—';
-      const usedAt = k.used_at ? new Date(k.used_at).toLocaleString('zh-CN', { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' }) : '—';
+      const { status, text: statusText } = getKeyStatus(k);
       const safeKey = (k.key || '').replace(/'/g, "\\'");
+      const usedAt = k.used_at ? new Date(k.used_at).toLocaleString('zh-CN', { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' }) : '—';
+      const expiresAt = k.expires_at ? new Date(k.expires_at).toLocaleString('zh-CN', { month:'short', day:'numeric' }) : '—';
+
       html += `<tr>
         <td style="color:var(--purple);font-family:monospace;font-size:14px;letter-spacing:1px;">${k.key || ''}</td>
-        <td>${preS}</td>
-        <td>${realName}</td>
+        <td>${k.course_name || '—'}</td>
+        <td>${k.class_name || '—'}</td>
+        <td>${k.student_name || '—'}</td>
         <td><span class="key-badge ${status}">${statusText}</span></td>
-        <td>${user}</td>
+        <td>${k.used_by || '—'}</td>
         <td style="font-size:11px;color:var(--text-dimmer);">${usedAt}</td>
+        <td style="font-size:11px;color:var(--text-dimmer);">${expiresAt}</td>
+        <td style="font-size:11px;font-family:monospace;color:var(--text-dimmer);">${k.batch_id || '—'}</td>
         <td>
           <button class="copy-btn" onclick="copyToClipboard('${safeKey}')">复制</button>
-          ${!isRevoked ? `<button class="revoke-btn" style="margin-left:6px;" onclick="handleRevokeKey('${safeKey}')">撤销</button>` : ''}
+          ${status !== 'revoked' ? `<button class="revoke-btn" style="margin-left:6px;" onclick="handleRevokeKey('${safeKey}')">撤销</button>` : ''}
         </td>
       </tr>`;
     });
@@ -1077,29 +1198,30 @@
     container.innerHTML = html;
   }
 
-  async function handleGenerateKeys() {
-    const count = parseInt(document.getElementById('genCount').value) || 1;
-    const student = document.getElementById('genStudent').value.trim() || null;
-    const realName = document.getElementById('genRealName').value.trim() || null;
-    const btn = document.getElementById('genBtn');
+  async function handleBatchGenerateKeys() {
+    const count = parseInt(document.getElementById('genCount').value) || 50;
+    const courseName = document.getElementById('genCourseName').value.trim() || null;
+    const className = document.getElementById('genClassName').value.trim() || null;
+    const expiresAtInput = document.getElementById('genExpiresAt').value;
+    const expiresAt = expiresAtInput ? new Date(expiresAtInput + 'T23:59:59').toISOString() : null;
+    const batchId = 'batch_' + Date.now().toString(36);
 
+    const btn = document.getElementById('genBtn');
     btn.disabled = true;
     btn.textContent = '生成中...';
     try {
-      // student_name 和 class_name 都用于教师备注，学生可自由填写姓名注册
-      const keys = await adminTracker.generateKeys(count, student, realName);
-      showToast(`成功生成 ${keys.length} 个密钥`, 'success');
+      const keys = await adminTracker.batchGenerateKeys(count, courseName, className, expiresAt);
+      showToast(`成功生成 ${keys.length} 个密钥（批次：${batchId}）`, 'success');
       loadKeys();
     } catch (e) {
       showToast('生成失败：' + (e.message || e), 'error');
     } finally {
       btn.disabled = false;
-      btn.textContent = '生成密钥';
+      btn.textContent = '批量生成';
     }
   }
 
   async function handleRevokeKey(key) {
-    const safeKey = (key || '').replace(/'/g, "\\'");
     if (!confirm(`确定撤销密钥 ${key} 吗？撤销后该密钥将无法使用。`)) return;
     try {
       const ok = await adminTracker.revokeKey(key);
@@ -1110,8 +1232,30 @@
     }
   }
 
+  function exportKeysToExcel() {
+    if (_allKeys.length === 0) {
+      showToast('暂无密钥数据可导出', 'error');
+      return;
+    }
+    const data = _allKeys.map(k => ({
+      '密钥': k.key,
+      '课程': k.course_name || '',
+      '班级': k.class_name || '',
+      '预设姓名': k.student_name || '',
+      '状态': getKeyStatus(k).text,
+      '使用者': k.used_by || '',
+      '使用时间': k.used_at || '',
+      '过期时间': k.expires_at || '',
+      '批次ID': k.batch_id || '',
+    }));
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, '密钥列表');
+    XLSX.writeFile(wb, `密钥导出_${new Date().toISOString().slice(0,10)}.xlsx`);
+    showToast('密钥已导出为Excel', 'success');
+  }
+
   function copyToClipboard(text) {
-    const safeText = (text || '').replace(/'/g, "\\'");
     if (navigator.clipboard) {
       navigator.clipboard.writeText(text).then(() => {
         showToast('已复制到剪贴板', 'success');
@@ -1140,8 +1284,6 @@
   // ── Init ──
   initAdminTracker();
 </script>
-  <!-- Toast -->
-  <div class="toast" id="toast"></div>
 
 </body>
 </html>

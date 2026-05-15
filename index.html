@@ -63,10 +63,7 @@
     background: linear-gradient(135deg, var(--purple), #6d28d9);
     border-radius: 12px;
     display: flex; align-items: center; justify-content: center;
-    color: #fff;
-    font-size: 20px;
-    font-weight: 700;
-    flex-shrink: 0;
+    color: #fff; font-size: 20px; font-weight: 700; flex-shrink: 0;
     box-shadow: 0 0 25px var(--purple-glow);
   }
   .page-header h1 { font-size: 18px; font-weight: 700; letter-spacing: 0.5px; }
@@ -79,340 +76,161 @@
     align-items: center;
   }
   .nav-link {
-    padding: 8px 16px;
-    border-radius: 8px;
-    font-size: 13px;
-    color: var(--text-dim);
-    text-decoration: none;
-    border: 1px solid transparent;
+    padding: 8px 16px; border-radius: 8px; font-size: 13px;
+    color: var(--text-dim); text-decoration: none; border: 1px solid transparent;
     transition: all 0.2s;
   }
-  .nav-link:hover {
-    background: rgba(255,255,255,0.06);
-    color: var(--text);
-    border-color: var(--border);
-  }
+  .nav-link:hover { background: rgba(255,255,255,0.06); color: var(--text); border-color: var(--border); }
   .logout-btn {
-    padding: 8px 16px;
-    border-radius: 8px;
-    font-size: 13px;
-    color: var(--red);
-    background: none;
-    border: 1px solid rgba(244,63,94,0.2);
-    cursor: pointer;
+    padding: 8px 16px; border-radius: 8px; font-size: 13px; color: var(--red);
+    background: none; border: 1px solid rgba(244,63,94,0.2); cursor: pointer;
     transition: all 0.2s;
   }
-  .logout-btn:hover {
-    background: rgba(244,63,94,0.1);
-    border-color: rgba(244,63,94,0.4);
-  }
+  .logout-btn:hover { background: rgba(244,63,94,0.1); border-color: rgba(244,63,94,0.4); }
 
   /* Main content */
   .container {
-    max-width: 900px;
-    margin: 0 auto;
-    padding: 32px 20px;
-    position: relative;
-    z-index: 1;
+    max-width: 900px; margin: 0 auto; padding: 32px 20px;
+    position: relative; z-index: 1;
   }
-
   .section-title {
-    font-size: 13px;
-    color: var(--text-dimmer);
-    text-transform: uppercase;
-    letter-spacing: 2px;
-    margin-bottom: 20px;
-    font-weight: 600;
+    font-size: 13px; color: var(--text-dimmer); text-transform: uppercase;
+    letter-spacing: 2px; margin-bottom: 20px; font-weight: 600;
   }
 
   /* Module cards grid */
   .modules-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 16px;
-    margin-bottom: 40px;
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px; margin-bottom: 40px;
   }
-
   .module-card {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 24px;
-    cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.4,0,0.2,1);
-    text-decoration: none;
-    color: inherit;
-    display: block;
-    position: relative;
-    overflow: hidden;
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px;
+    padding: 24px; cursor: pointer; transition: all 0.3s cubic-bezier(0.4,0,0.2,1);
+    text-decoration: none; color: inherit; display: block; position: relative; overflow: hidden;
   }
   .module-card::before {
-    content: '';
-    position: absolute;
-    inset: 0;
+    content: ''; position: absolute; inset: 0;
     background: linear-gradient(135deg, rgba(139,92,246,0.05), transparent);
-    opacity: 0;
-    transition: opacity 0.3s;
+    opacity: 0; transition: opacity 0.3s;
   }
   .module-card:hover {
-    border-color: var(--purple);
-    transform: translateY(-4px);
+    border-color: var(--purple); transform: translateY(-4px);
     box-shadow: 0 8px 30px rgba(139,92,246,0.2);
   }
   .module-card:hover::before { opacity: 1; }
-  .module-card.locked {
-    opacity: 0.4;
-    pointer-events: none;
-    filter: grayscale(0.5);
-  }
+  .module-card.locked { opacity: 0.4; pointer-events: none; filter: grayscale(0.5); }
 
-  .module-icon {
-    font-size: 36px;
-    margin-bottom: 14px;
-    display: block;
-  }
-  .module-name {
-    font-size: 18px;
-    font-weight: 700;
-    margin-bottom: 8px;
-  }
-  .module-desc {
-    font-size: 13px;
-    color: var(--text-dim);
-    line-height: 1.6;
-    margin-bottom: 14px;
-  }
+  .module-icon { font-size: 36px; margin-bottom: 14px; display: block; }
+  .module-name { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+  .module-desc { font-size: 13px; color: var(--text-dim); line-height: 1.6; margin-bottom: 14px; }
   .module-tag {
-    display: inline-block;
-    padding: 3px 10px;
-    border-radius: 20px;
-    font-size: 11px;
-    font-weight: 600;
-    margin-right: 6px;
+    display: inline-block; padding: 3px 10px; border-radius: 20px;
+    font-size: 11px; font-weight: 600; margin-right: 6px;
   }
-  .module-tag.active {
-    background: rgba(34,211,167,0.15);
-    color: var(--green);
-    border: 1px solid rgba(34,211,167,0.3);
-  }
-  .module-tag.coming {
-    background: rgba(251,191,36,0.12);
-    color: var(--gold);
-    border: 1px solid rgba(251,191,36,0.25);
-  }
+  .module-tag.active { background: rgba(34,211,167,0.15); color: var(--green); border: 1px solid rgba(34,211,167,0.3); }
+  .module-tag.coming { background: rgba(251,191,36,0.12); color: var(--gold); border: 1px solid rgba(251,191,36,0.25); }
 
   /* Info section */
   .info-section {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 24px;
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 24px;
   }
-  .info-section h3 {
-    font-size: 15px;
-    font-weight: 600;
-    margin-bottom: 12px;
-    color: var(--purple);
-  }
-  .info-list {
-    list-style: none;
-    padding: 0;
-  }
+  .info-section h3 { font-size: 15px; font-weight: 600; margin-bottom: 12px; color: var(--purple); }
+  .info-list { list-style: none; padding: 0; }
   .info-list li {
-    padding: 8px 0;
-    font-size: 13px;
-    color: var(--text-dim);
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    gap: 8px;
+    padding: 8px 0; font-size: 13px; color: var(--text-dim);
+    border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px;
   }
   .info-list li:last-child { border-bottom: none; }
   .info-list li .icon { font-size: 16px; }
 
   /* Student profile bar */
   .student-id-bar {
-    background: rgba(56,189,248,0.08);
-    border: 1px solid rgba(56,189,248,0.2);
-    border-radius: 10px;
-    padding: 10px 16px;
-    font-size: 12px;
-    color: var(--blue);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 24px;
+    background: rgba(56,189,248,0.08); border: 1px solid rgba(56,189,248,0.2);
+    border-radius: 10px; padding: 10px 16px; font-size: 12px; color: var(--blue);
+    display: flex; align-items: center; gap: 8px; margin-bottom: 24px;
   }
 
   /* ══════════════════════════════════════════
-     Auth Modal — Login / Register
+     Auth Modal
      ══════════════════════════════════════════ */
   .auth-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.75);
-    backdrop-filter: blur(8px);
-    z-index: 9999;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    animation: fadeIn 0.3s ease;
+    position: fixed; inset: 0; background: rgba(0,0,0,0.75); backdrop-filter: blur(8px);
+    z-index: 9999; display: flex; align-items: center; justify-content: center; animation: fadeIn 0.3s ease;
   }
   .auth-overlay.hidden { display: none; }
   @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
   @keyframes slideUp { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 
   .auth-box {
-    background: var(--bg-card2);
-    border: 1px solid rgba(139,92,246,0.3);
-    border-radius: 20px;
-    padding: 36px 32px;
-    max-width: 440px;
-    width: 92%;
+    background: var(--bg-card2); border: 1px solid rgba(139,92,246,0.3); border-radius: 20px;
+    padding: 36px 32px; max-width: 440px; width: 92%;
     animation: slideUp 0.4s cubic-bezier(0.4,0,0.2,1);
     box-shadow: 0 20px 60px rgba(0,0,0,0.5), 0 0 40px rgba(139,92,246,0.15);
   }
   .auth-box h2 {
-    font-size: 22px;
-    font-weight: 700;
-    margin-bottom: 4px;
+    font-size: 22px; font-weight: 700; margin-bottom: 4px;
     background: linear-gradient(135deg, var(--purple), var(--blue));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
   }
-  .auth-box .auth-subtitle {
-    font-size: 13px;
-    color: var(--text-dim);
-    margin-bottom: 24px;
-  }
+  .auth-box .auth-subtitle { font-size: 13px; color: var(--text-dim); margin-bottom: 24px; }
 
-  /* Tab switch */
   .auth-tabs {
-    display: flex;
-    gap: 0;
-    margin-bottom: 22px;
-    background: rgba(255,255,255,0.04);
-    border-radius: 10px;
-    overflow: hidden;
+    display: flex; gap: 0; margin-bottom: 22px;
+    background: rgba(255,255,255,0.04); border-radius: 10px; overflow: hidden;
   }
   .auth-tab {
-    flex: 1;
-    padding: 10px;
-    text-align: center;
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--text-dim);
-    background: none;
-    border: none;
-    cursor: pointer;
-    transition: all 0.2s;
+    flex: 1; padding: 10px; text-align: center; font-size: 14px; font-weight: 600;
+    color: var(--text-dim); background: none; border: none; cursor: pointer; transition: all 0.2s;
   }
-  .auth-tab.active {
-    background: var(--purple);
-    color: #fff;
-  }
+  .auth-tab.active { background: var(--purple); color: #fff; }
 
-  /* Forms */
-  .form-group {
-    margin-bottom: 16px;
-  }
-  .form-group label {
-    display: block;
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--text-dim);
-    margin-bottom: 6px;
-  }
+  .form-group { margin-bottom: 16px; }
+  .form-group label { display: block; font-size: 13px; font-weight: 600; color: var(--text-dim); margin-bottom: 6px; }
   .form-group input, .form-group select {
-    width: 100%;
-    padding: 12px 14px;
-    background: rgba(255,255,255,0.06);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    color: var(--text);
-    font-size: 15px;
-    outline: none;
-    transition: border-color 0.2s, box-shadow 0.2s;
+    width: 100%; padding: 12px 14px; background: rgba(255,255,255,0.06);
+    border: 1px solid var(--border); border-radius: 10px; color: var(--text);
+    font-size: 15px; outline: none; transition: border-color 0.2s, box-shadow 0.2s;
   }
   .form-group input:focus, .form-group select:focus {
-    border-color: var(--purple);
-    box-shadow: 0 0 0 3px rgba(139,92,246,0.2);
+    border-color: var(--purple); box-shadow: 0 0 0 3px rgba(139,92,246,0.2);
   }
-  .form-group input::placeholder {
-    color: var(--text-dimmer);
-  }
-  .form-group select option {
-    background: #1a1f36;
-    color: var(--text);
-  }
-  .form-error {
-    font-size: 12px;
-    color: var(--red);
-    margin-top: 4px;
-    display: none;
-  }
+  .form-group input::placeholder { color: var(--text-dimmer); }
+  .form-error { font-size: 12px; color: var(--red); margin-top: 4px; display: none; }
   .form-error.show { display: block; }
-  .form-hint {
-    font-size: 11px;
-    color: var(--text-dimmer);
-    margin-top: 4px;
-  }
+  .form-hint { font-size: 11px; color: var(--text-dimmer); margin-top: 4px; }
 
-  /* Submit button */
   .auth-submit {
-    width: 100%;
-    padding: 14px;
+    width: 100%; padding: 14px;
     background: linear-gradient(135deg, var(--purple), #6d28d9);
-    border: none;
-    border-radius: 12px;
-    color: #fff;
-    font-size: 16px;
-    font-weight: 600;
-    cursor: pointer;
+    border: none; border-radius: 12px; color: #fff; font-size: 16px; font-weight: 600;
+    cursor: pointer; transition: all 0.2s; margin-top: 6px;
+  }
+  .auth-submit:hover { transform: translateY(-2px); box-shadow: 0 6px 25px rgba(139,92,246,0.4); }
+  .auth-submit:active { transform: translateY(0); }
+  .auth-submit:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+
+  /* Identity confirmation step */
+  .identity-section { margin-top: 16px; }
+  .identity-question { font-size: 14px; color: var(--text); margin-bottom: 12px; line-height: 1.6; }
+  .identity-btns { display: flex; gap: 12px; }
+  .identity-btns .auth-submit { flex: 1; }
+  .identity-btn-cancel {
+    flex: 1; padding: 14px; border-radius: 12px; border: 1px solid var(--border);
+    background: none; color: var(--text); font-size: 15px; cursor: pointer;
     transition: all 0.2s;
-    margin-top: 6px;
   }
-  .auth-submit:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 25px rgba(139,92,246,0.4);
-  }
-  .auth-submit:active {
-    transform: translateY(0);
-  }
-  .auth-submit:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    transform: none;
-    box-shadow: none;
-  }
+  .identity-btn-cancel:hover { background: rgba(255,255,255,0.06); }
 
   /* Toast */
   .toast {
-    position: fixed;
-    top: 20px;
-    left: 50%;
+    position: fixed; top: 20px; left: 50%;
     transform: translateX(-50%) translateY(-100px);
-    padding: 12px 24px;
-    border-radius: 12px;
-    font-size: 14px;
-    font-weight: 600;
-    z-index: 99999;
-    transition: transform 0.4s cubic-bezier(0.4,0,0.2,1);
-    pointer-events: none;
+    padding: 12px 24px; border-radius: 12px; font-size: 14px; font-weight: 600;
+    z-index: 99999; transition: transform 0.4s cubic-bezier(0.4,0,0.2,1); pointer-events: none;
   }
   .toast.show { transform: translateX(-50%) translateY(0); }
-  .toast.success {
-    background: rgba(34,211,167,0.15);
-    border: 1px solid rgba(34,211,167,0.3);
-    color: var(--green);
-    backdrop-filter: blur(8px);
-  }
-  .toast.error {
-    background: rgba(244,63,94,0.15);
-    border: 1px solid rgba(244,63,94,0.3);
-    color: var(--red);
-    backdrop-filter: blur(8px);
-  }
+  .toast.success { background: rgba(34,211,167,0.15); border: 1px solid rgba(34,211,167,0.3); color: var(--green); backdrop-filter: blur(8px); }
+  .toast.error { background: rgba(244,63,94,0.15); border: 1px solid rgba(244,63,94,0.3); color: var(--red); backdrop-filter: blur(8px); }
 
   @media (max-width: 480px) {
     .modules-grid { grid-template-columns: 1fr; }
@@ -429,18 +247,14 @@
     <h1>雅思训练平台</h1>
     <p>IELTS Training Platform</p>
   </div>
-  <div class="header-nav" id="headerNav">
-    <!-- JS 动态填充 -->
-  </div>
+  <div class="header-nav" id="headerNav"></div>
 </div>
 
 <div class="container">
-  <!-- Student profile (登录后显示) -->
   <div class="student-id-bar" id="studentIdBar" style="display:none;">
     <span id="studentProfileDisplay"></span>
   </div>
 
-  <!-- 未登录提示 -->
   <div id="loginPrompt" style="text-align:center;padding:60px 20px;display:none;">
     <div style="font-size:48px;margin-bottom:16px;">🎓</div>
     <div style="font-size:18px;font-weight:700;margin-bottom:8px;">请先登录</div>
@@ -489,22 +303,21 @@
     <ul class="info-list">
       <li><span class="icon">📊</span> 学习数据自动采集（答题、跳过、连击、用时）</li>
       <li><span class="icon">💾</span> 离线安全 — 数据先存本地，联网后自动上报</li>
-      <li><span class="icon">🎯</span> 统一学生 ID 跨模块追踪学习进度</li>
+      <li><span class="icon">🎯</span> 用户名+密码登录，跨浏览器同步学习进度</li>
       <li><span class="icon">🧠</span> 遗忘曲线复习 — 基于艾宾浩斯间隔重复算法</li>
-      <li><span class="icon">🔌</span> 模块化架构 — 新训练可快速接入</li>
+      <li><span class="icon">🔑</span> 密钥激活系统 — 绑定真实姓名，精准统计</li>
     </ul>
   </div>
 </div>
 
 <!-- ══════════════════════════════════════════
-     Auth Modal
+     Auth Modal — Login / Register
      ══════════════════════════════════════════ -->
 <div class="auth-overlay" id="authModal">
   <div class="auth-box">
     <h2 id="authTitle">🎓 登录</h2>
-    <p class="auth-subtitle" id="authSubtitle">输入你的信息开始学习</p>
+    <p class="auth-subtitle" id="authSubtitle">输入你的账号信息开始学习</p>
 
-    <!-- Tab switch -->
     <div class="auth-tabs">
       <button class="auth-tab active" id="tabLogin" onclick="switchAuthTab('login')">登录</button>
       <button class="auth-tab" id="tabRegister" onclick="switchAuthTab('register')">注册</button>
@@ -513,14 +326,18 @@
     <!-- Login Form -->
     <form id="loginForm" onsubmit="return false;">
       <div class="form-group">
-        <label for="loginName">姓名</label>
-        <input type="text" id="loginName" placeholder="请输入姓名" maxlength="20" autocomplete="off">
-        <div class="form-error" id="loginNameError">请填写姓名</div>
+        <label for="loginUsername">用户名</label>
+        <input type="text" id="loginUsername" placeholder="请输入用户名" maxlength="20" autocomplete="off">
+        <div class="form-error" id="loginUsernameError">请输入用户名</div>
       </div>
       <div class="form-group">
         <label for="loginPassword">密码</label>
-        <input type="password" id="loginPassword" placeholder="请输入密码" maxlength="30" autocomplete="off">
-        <div class="form-error" id="loginPasswordError">请输入密码</div>
+        <input type="password" id="loginPassword" placeholder="请输入密码" maxlength="16" autocomplete="current-password">
+        <div class="form-error" id="loginPasswordError"></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;">
+        <input type="checkbox" id="loginRemember" style="width:auto;">
+        <label for="loginRemember" style="font-size:12px;color:var(--text-dim);cursor:pointer;">记住我（7天内免登录）</label>
       </div>
       <button class="auth-submit" id="loginSubmitBtn" onclick="handleLogin()">登录</button>
     </form>
@@ -528,29 +345,54 @@
     <!-- Register Form -->
     <form id="registerForm" onsubmit="return false;" style="display:none;">
       <div class="form-group">
-        <label for="regName">姓名 *</label>
-        <input type="text" id="regName" placeholder="请输入你的姓名" maxlength="20" autocomplete="off">
-        <div class="form-error" id="regNameError">请填写姓名</div>
-        <div class="form-hint">姓名由你自己填写，用于登录和记录学习数据</div>
+        <label for="regUsername">用户名 *</label>
+        <input type="text" id="regUsername" placeholder="2-20位，字母/数字/下划线" maxlength="20" autocomplete="off">
+        <div class="form-error" id="regUsernameError"></div>
       </div>
       <div class="form-group">
         <label for="regPassword">密码 *</label>
-        <input type="password" id="regPassword" placeholder="设置登录密码（至少4位）" maxlength="30" autocomplete="off">
-        <div class="form-error" id="regPasswordError">密码至少4位</div>
+        <input type="password" id="regPassword" placeholder="8-16位，必须包含字母和数字" maxlength="16" autocomplete="new-password">
+        <div class="form-error" id="regPasswordError"></div>
       </div>
       <div class="form-group">
         <label for="regPassword2">确认密码 *</label>
-        <input type="password" id="regPassword2" placeholder="再次输入密码" maxlength="30" autocomplete="off">
+        <input type="password" id="regPassword2" placeholder="再次输入密码" maxlength="16" autocomplete="new-password">
         <div class="form-error" id="regPassword2Error">两次密码不一致</div>
       </div>
       <div class="form-group">
         <label for="regKey">激活密钥 *</label>
-        <input type="text" id="regKey" placeholder="请输入教师提供的激活密钥" maxlength="14" autocomplete="off" style="letter-spacing:2px;font-size:16px;">
-        <div class="form-error" id="regKeyError">请输入有效的激活密钥</div>
-        <div class="form-hint">密钥格式：XXXX-XXXX-XXXX，由教师提供</div>
+        <input type="text" id="regKey" placeholder="XXXX-XXXX-XXXX" maxlength="14" autocomplete="off"
+               style="letter-spacing:2px;font-size:16px;text-transform:uppercase;">
+        <div class="form-error" id="regKeyError"></div>
+        <div class="form-hint">由教师提供的激活密钥</div>
+      </div>
+      <div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:20px;">
+        <input type="checkbox" id="regTerms" style="margin-top:3px;width:auto;">
+        <label for="regTerms" style="font-size:12px;color:var(--text-dim);font-weight:400;cursor:pointer;">
+          我已阅读并同意《用户协议》和《隐私政策》
+        </label>
       </div>
       <button class="auth-submit" id="regSubmitBtn" onclick="handleRegister()">注册</button>
     </form>
+
+    <!-- Identity Confirmation (shown during registration step 2) -->
+    <div id="identitySection" style="display:none;" class="identity-section">
+      <div id="identityConfirm" style="display:none;">
+        <p class="identity-question" id="identityQuestion"></p>
+        <div class="identity-btns">
+          <button class="auth-submit" onclick="confirmIdentity(true)">是我本人</button>
+          <button class="identity-btn-cancel" onclick="confirmIdentity(false)">不是我</button>
+        </div>
+      </div>
+      <div id="identityInput" style="display:none;">
+        <div class="form-group">
+          <label for="regRealName">真实姓名 *</label>
+          <input type="text" id="regRealName" placeholder="请输入你的真实姓名" maxlength="20" autocomplete="off">
+          <div class="form-error" id="regRealNameError">请输入真实姓名</div>
+        </div>
+        <button class="auth-submit" onclick="submitRegistration()">确认注册</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -560,44 +402,37 @@
 <script src="shared/tracker.js"></script>
 <script>
   // ══════════════════════════════════════════
-  //  学生身份系统
+  //  v6 认证系统 — 用户名+密码+密钥绑定
   // ══════════════════════════════════════════
-  const SK_ID    = 'ielts_student_id';
-  const SK_NAME  = 'ielts_student_name';
-  const SK_CLASS = 'ielts_student_class';
-  const SK_HASH  = 'ielts_password_hash';
-  const SK_LOGGED = 'ielts_logged_in';
 
-  // 简单 hash（不用于安全场景，仅防误操作）
-  function simpleHash(str) {
-    let h = 0;
-    for (let i = 0; i < str.length; i++) {
-      h = ((h << 5) - h + str.charCodeAt(i)) | 0;
-    }
-    return 'h_' + Math.abs(h).toString(36);
-  }
+  const SUPABASE_URL = 'https://jhmcyiilfndpdiyutnzu.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpobWN5aWlsZm5kcGRpeXV0bnp1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3MDc5OTAsImV4cCI6MjA5NDI4Mzk5MH0.XS_Ewu1GPMYuep6X9wPdzKjtqIwQhkt9ptpv73dLWj4';
 
-  function isLoggedIn() {
-    return localStorage.getItem(SK_LOGGED) === 'true'
-      && localStorage.getItem(SK_NAME);
-  }
+  // 注册流程中间状态
+  let _regState = {
+    username: '',
+    password: '',
+    keyString: '',
+    keyStudentName: null,  // 密钥预设姓名
+    keyClassName: null,
+    realName: '',           // 最终确认的真实姓名
+  };
 
-  function getStudentId() {
-    let id = localStorage.getItem(SK_ID);
-    if (!id) {
-      id = 'stu_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
-      localStorage.setItem(SK_ID, id);
-    }
-    return id;
+  // ── 初始化 ──
+  if (typeof tracker !== 'undefined') {
+    tracker.init({
+      module: 'platform',
+      supabaseUrl: SUPABASE_URL,
+      supabaseAnonKey: SUPABASE_ANON_KEY,
+    });
   }
 
   // ── UI 状态切换 ──
   function updateUIState() {
-    const logged = isLoggedIn();
-    const name = localStorage.getItem(SK_NAME) || '';
-    const id = localStorage.getItem(SK_ID) || '';
+    const logged = tracker.isLoggedIn();
+    const name = tracker.getStudentName();
+    const username = tracker.getUsername();
 
-    // Header nav
     const nav = document.getElementById('headerNav');
     if (logged) {
       nav.innerHTML = `
@@ -607,12 +442,11 @@
       nav.innerHTML = `<button class="logout-btn" style="color:var(--purple);border-color:rgba(139,92,246,0.3);" onclick="showAuthModal('login')">🔐 登录</button>`;
     }
 
-    // Profile bar
     const profileBar = document.getElementById('studentIdBar');
     const profileDisplay = document.getElementById('studentProfileDisplay');
-    if (logged) {
+    if (logged && name) {
       profileBar.style.display = 'flex';
-      profileDisplay.innerHTML = `👤 <strong>${name}</strong> <span style="color:var(--text-dimmer); font-size:11px; margin-left:6px;">ID: ${id.slice(0,12)}…</span>`;
+      profileDisplay.innerHTML = `👤 <strong>${name}</strong>${username ? ` <span style="color:var(--text-dimmer);font-size:11px;margin-left:6px;">@${username}</span>` : ''}`;
     } else {
       profileBar.style.display = 'none';
     }
@@ -621,7 +455,6 @@
     document.querySelectorAll('.module-card.locked').forEach(card => {
       if (logged) card.classList.remove('locked');
     });
-    // 反向：退出后加回 locked
     if (!logged) {
       ['cardSynonym', 'cardReview'].forEach(cid => {
         const c = document.getElementById(cid);
@@ -629,7 +462,6 @@
       });
     }
 
-    // Show/hide sections
     const show = logged;
     document.getElementById('loginPrompt').style.display = show ? 'none' : 'block';
     document.getElementById('modulesTitle').style.display = show ? 'block' : 'none';
@@ -644,9 +476,12 @@
     currentAuthTab = tab || 'login';
     switchAuthTab(currentAuthTab);
     document.getElementById('authModal').classList.remove('hidden');
-    // 自动聚焦
+    // 重置身份确认区
+    document.getElementById('identitySection').style.display = 'none';
+    document.getElementById('identityConfirm').style.display = 'none';
+    document.getElementById('identityInput').style.display = 'none';
     setTimeout(() => {
-      const focusId = currentAuthTab === 'login' ? 'loginName' : 'regName';
+      const focusId = currentAuthTab === 'login' ? 'loginUsername' : 'regUsername';
       document.getElementById(focusId).focus();
     }, 100);
   }
@@ -661,160 +496,246 @@
     document.getElementById('tabRegister').classList.toggle('active', tab === 'register');
     document.getElementById('loginForm').style.display = tab === 'login' ? 'block' : 'none';
     document.getElementById('registerForm').style.display = tab === 'register' ? 'block' : 'none';
-
+    document.getElementById('identitySection').style.display = 'none';
     document.getElementById('authTitle').textContent = tab === 'login' ? '🎓 登录' : '✨ 注册新账号';
-    document.getElementById('authSubtitle').textContent = tab === 'login' ? '输入你的信息继续学习' : '创建你的学习账号';
+    document.getElementById('authSubtitle').textContent = tab === 'login' ? '输入你的账号信息继续学习' : '创建你的学习账号';
   }
 
-  // （班级功能已移除）
-
   // ── 登录 ──
-  function handleLogin() {
-    const name = document.getElementById('loginName').value.trim();
+  async function handleLogin() {
+    const username = document.getElementById('loginUsername').value.trim();
     const password = document.getElementById('loginPassword').value;
+    const rememberMe = document.getElementById('loginRemember').checked;
 
-    // 验证
+    // 清除旧错误
+    document.getElementById('loginUsernameError').classList.remove('show');
+    document.getElementById('loginPasswordError').classList.remove('show');
+
     let valid = true;
-    document.getElementById('loginNameError').classList.toggle('show', !name);
-    if (!name) valid = false;
-    document.getElementById('loginPasswordError').classList.toggle('show', !password);
-    if (!password) valid = false;
+    if (!username) {
+      document.getElementById('loginUsernameError').classList.add('show');
+      valid = false;
+    }
+    if (!password) {
+      document.getElementById('loginPasswordError').textContent = '请输入密码';
+      document.getElementById('loginPasswordError').classList.add('show');
+      valid = false;
+    }
     if (!valid) return;
 
-    // 验证密码
-    const key = `ielts_pwd_${name}`;
-    const storedHash = localStorage.getItem(key);
+    // 禁用按钮
+    const btn = document.getElementById('loginSubmitBtn');
+    btn.disabled = true;
+    btn.textContent = '登录中…';
 
-    if (storedHash) {
-      // 已注册 → 验证密码
-      if (simpleHash(password) !== storedHash) {
-        showToast('密码错误，请重试', 'error');
-        document.getElementById('loginPasswordError').textContent = '密码错误';
+    try {
+      const result = await tracker.loginStudent(username, password, rememberMe);
+
+      if (!result.success) {
+        if (result.locked) {
+          document.getElementById('loginPasswordError').textContent = result.message;
+        } else {
+          document.getElementById('loginPasswordError').textContent = result.message;
+        }
         document.getElementById('loginPasswordError').classList.add('show');
         return;
       }
-    } else {
-      // 未注册 → 提示去注册
-      showToast('该账号未注册，请先注册', 'error');
-      switchAuthTab('register');
-      document.getElementById('regName').value = name;
-      document.getElementById('regPassword').focus();
-      return;
+
+      // 登录成功
+      hideAuthModal();
+      updateUIState();
+      showToast(`欢迎回来，${result.realName || username}！`, 'success');
+    } catch (e) {
+      showToast('登录失败：' + e.message, 'error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '登录';
     }
-
-    // 登录成功
-    doLogin(name);
-  }
-
-  function doLogin(name) {
-    // 登录时尝试恢复该学生的原始 student_id
-    if (typeof tracker !== 'undefined' && tracker.loginAsStudent) {
-      const existingId = tracker.loginAsStudent(name);
-      if (existingId) {
-        // 成功恢复原 student_id
-        hideAuthModal();
-        updateUIState();
-        showToast(`欢迎回来，${name}！`, 'success');
-        return;
-      }
-    }
-
-    // 首次登录（本地无映射），用当前 student_id
-    const id = getStudentId();
-    localStorage.setItem(SK_NAME, name);
-    localStorage.setItem(SK_LOGGED, 'true');
-
-    // 同步 tracker
-    if (typeof tracker !== 'undefined' && tracker.setStudentProfile) {
-      tracker.setStudentProfile({ name, className: '' });
-    }
-
-    hideAuthModal();
-    updateUIState();
-    showToast(`欢迎回来，${name}！`, 'success');
   }
 
   // ── 注册 ──
   async function handleRegister() {
-    const name = document.getElementById('regName').value.trim();
+    const username = document.getElementById('regUsername').value.trim();
     const password = document.getElementById('regPassword').value;
     const password2 = document.getElementById('regPassword2').value;
-    const regKeyVal = document.getElementById('regKey').value.trim();
+    const keyString = document.getElementById('regKey').value.trim();
+    const termsChecked = document.getElementById('regTerms').checked;
 
-    // 验证
+    // 清除旧错误
+    ['regUsernameError', 'regPasswordError', 'regPassword2Error', 'regKeyError'].forEach(id => {
+      document.getElementById(id).classList.remove('show');
+    });
+
     let valid = true;
-    document.getElementById('regNameError').classList.toggle('show', !name);
-    if (!name) valid = false;
-    document.getElementById('regPasswordError').classList.toggle('show', password.length < 4);
-    if (password.length < 4) valid = false;
-    document.getElementById('regPassword2Error').classList.toggle('show', password !== password2);
-    if (password !== password2) valid = false;
 
-    // 密钥验证
-    const keyError = document.getElementById('regKeyError');
-    if (!regKeyVal) {
-      keyError.textContent = '请输入激活密钥';
-      keyError.classList.add('show');
+    // 用户名校验
+    if (!username || username.length < 2) {
+      document.getElementById('regUsernameError').textContent = '用户名至少2个字符';
+      document.getElementById('regUsernameError').classList.add('show');
       valid = false;
-    } else {
-      if (typeof tracker !== 'undefined' && tracker.validateKey) {
-        const result = await tracker.validateKey(regKeyVal, name);
-        if (!result.valid) {
-          keyError.textContent = result.message;
-          keyError.classList.add('show');
-          valid = false;
-        } else {
-          keyError.classList.remove('show');
-        }
-      } else {
-        keyError.classList.remove('show');
-      }
+    } else if (!/^[a-zA-Z0-9_\u4e00-\u9fa5]+$/.test(username)) {
+      document.getElementById('regUsernameError').textContent = '用户名只能包含字母、数字、下划线或中文';
+      document.getElementById('regUsernameError').classList.add('show');
+      valid = false;
+    }
+
+    // 密码校验
+    if (password.length < 8 || password.length > 16) {
+      document.getElementById('regPasswordError').textContent = '密码长度8-16位';
+      document.getElementById('regPasswordError').classList.add('show');
+      valid = false;
+    } else if (!/(?=.*[A-Za-z])(?=.*\d)/.test(password)) {
+      document.getElementById('regPasswordError').textContent = '密码必须同时包含字母和数字';
+      document.getElementById('regPasswordError').classList.add('show');
+      valid = false;
+    }
+
+    // 确认密码
+    if (password !== password2) {
+      document.getElementById('regPassword2Error').classList.add('show');
+      valid = false;
+    }
+
+    // 密钥
+    if (!keyString) {
+      document.getElementById('regKeyError').textContent = '请输入激活密钥';
+      document.getElementById('regKeyError').classList.add('show');
+      valid = false;
+    }
+
+    // 协议
+    if (!termsChecked) {
+      showToast('请先阅读并同意用户协议', 'error');
+      valid = false;
     }
 
     if (!valid) return;
 
-    // 检查是否已注册
-    const sk = `ielts_pwd_${name}`;
-    if (localStorage.getItem(sk)) {
-      showToast('该姓名已注册，请直接登录', 'error');
-      switchAuthTab('login');
-      document.getElementById('loginName').value = name;
-      document.getElementById('loginPassword').focus();
-      return;
+    // 禁用按钮
+    const btn = document.getElementById('regSubmitBtn');
+    btn.disabled = true;
+    btn.textContent = '验证中…';
+
+    try {
+      // 1. 检查用户名唯一性
+      const exists = await tracker.checkUsernameExists(username);
+      if (exists) {
+        document.getElementById('regUsernameError').textContent = '该用户名已注册';
+        document.getElementById('regUsernameError').classList.add('show');
+        btn.disabled = false;
+        btn.textContent = '注册';
+        return;
+      }
+
+      // 2. 验证密钥
+      const keyResult = await tracker.validateKey(keyString);
+      if (!keyResult.valid) {
+        document.getElementById('regKeyError').textContent = keyResult.message;
+        document.getElementById('regKeyError').classList.add('show');
+        btn.disabled = false;
+        btn.textContent = '注册';
+        return;
+      }
+
+      // 3. 保存中间状态
+      _regState.username = username;
+      _regState.password = password;
+      _regState.keyString = keyString;
+      _regState.keyStudentName = keyResult.studentName;
+      _regState.keyClassName = keyResult.className;
+
+      // 4. 显示身份确认
+      document.getElementById('registerForm').style.display = 'none';
+
+      if (keyResult.studentName) {
+        // 密钥有预设姓名 → 确认身份
+        document.getElementById('identityQuestion').textContent =
+          `该密钥属于「${keyResult.studentName}」，是否为你本人？`;
+        document.getElementById('identityConfirm').style.display = 'block';
+        document.getElementById('identityInput').style.display = 'none';
+      } else {
+        // 密钥无预设姓名 → 输入真实姓名
+        document.getElementById('identityConfirm').style.display = 'none';
+        document.getElementById('identityInput').style.display = 'block';
+        document.getElementById('regRealName').focus();
+      }
+      document.getElementById('identitySection').style.display = 'block';
+      document.getElementById('authTitle').textContent = '🔍 身份确认';
+      document.getElementById('authSubtitle').textContent = '请确认你的身份信息';
+
+    } catch (e) {
+      showToast('验证失败：' + e.message, 'error');
+      btn.disabled = false;
+      btn.textContent = '注册';
     }
+  }
 
-    // 注册
-    localStorage.setItem(sk, simpleHash(password));
-
-    // 生成全新的 student_id（关键！确保每个学生 ID 唯一）
-    let newStudentId;
-    if (typeof tracker !== 'undefined' && tracker.registerNewStudent) {
-      newStudentId = tracker.registerNewStudent(name);
+  // 身份确认回调（预设姓名模式）
+  function confirmIdentity(isMe) {
+    if (isMe) {
+      _regState.realName = _regState.keyStudentName;
+      submitRegistration();
     } else {
-      newStudentId = getStudentId();
+      showToast('请联系教师获取属于你的密钥', 'error');
+      // 返回注册表单
+      document.getElementById('identitySection').style.display = 'none';
+      document.getElementById('registerForm').style.display = 'block';
+      document.getElementById('authTitle').textContent = '✨ 注册新账号';
+      document.getElementById('authSubtitle').textContent = '创建你的学习账号';
+      document.getElementById('regSubmitBtn').disabled = false;
+      document.getElementById('regSubmitBtn').textContent = '注册';
+    }
+  }
+
+  // 提交注册（最终步骤）
+  async function submitRegistration() {
+    // 如果是手动输入姓名模式
+    if (!_regState.realName) {
+      const realName = document.getElementById('regRealName').value.trim();
+      if (!realName) {
+        document.getElementById('regRealNameError').classList.add('show');
+        return;
+      }
+      _regState.realName = realName;
     }
 
-    // 标记密钥已使用
-    if (typeof tracker !== 'undefined' && tracker.consumeKey) {
-      await tracker.consumeKey(regKeyVal, name, newStudentId);
-    }
+    try {
+      // 1. 注册学生
+      const regResult = await tracker.registerStudent(_regState.username, _regState.password);
+      if (!regResult.success) {
+        showToast(regResult.message, 'error');
+        return;
+      }
 
-    localStorage.setItem(SK_NAME, name);
-    localStorage.setItem(SK_LOGGED, 'true');
-    hideAuthModal();
-    updateUIState();
-    showToast(`注册成功，欢迎 ${name}！`, 'success');
+      // 2. 绑定密钥
+      const bindResult = await tracker.bindKeyToStudent(regResult.studentId, _regState.keyString, _regState.realName);
+      if (!bindResult.success) {
+        showToast('注册成功但密钥绑定失败：' + bindResult.message, 'error');
+        // 学生已注册但密钥未绑定，仍可登录
+      }
+
+      // 3. 创建会话
+      await tracker.createSession(false);
+
+      // 4. 更新 UI
+      tracker.setStudentProfile({
+        name: _regState.realName,
+        username: _regState.username,
+        className: _regState.keyClassName || '',
+      });
+
+      hideAuthModal();
+      updateUIState();
+      showToast(`注册成功，欢迎 ${_regState.realName}！`, 'success');
+
+    } catch (e) {
+      showToast('注册失败：' + e.message, 'error');
+    }
   }
 
   // ── 退出登录 ──
   function handleLogout() {
-    localStorage.removeItem(SK_LOGGED);
-    localStorage.removeItem(SK_NAME);
-    localStorage.removeItem(SK_ID); // 清除 student_id，确保下次注册不共用
-    // 同步 tracker logout
-    if (typeof tracker !== 'undefined' && tracker.logout) {
-      tracker.logout();
-    }
+    tracker.logout();
     updateUIState();
     showAuthModal('login');
     showToast('已退出登录', 'success');
@@ -830,36 +751,19 @@
   }
 
   // ── Enter 键导航 ──
-  document.getElementById('loginName').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('loginPassword').focus(); });
+  document.getElementById('loginUsername').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('loginPassword').focus(); });
   document.getElementById('loginPassword').addEventListener('keydown', e => { if (e.key === 'Enter') handleLogin(); });
-  document.getElementById('regName').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('regPassword').focus(); });
+  document.getElementById('regUsername').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('regPassword').focus(); });
   document.getElementById('regPassword').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('regPassword2').focus(); });
   document.getElementById('regPassword2').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('regKey').focus(); });
   document.getElementById('regKey').addEventListener('keydown', e => { if (e.key === 'Enter') handleRegister(); });
+  document.getElementById('regRealName').addEventListener('keydown', e => { if (e.key === 'Enter') submitRegistration(); });
 
-  // ══════════════════════════════════════════
-  //  初始化 Tracker + 学生身份系统
-  // ══════════════════════════════════════════
-
-  // Supabase 云端配置（与 admin 端一致）
-  const SUPABASE_URL = 'https://jhmcyiilfndpdiyutnzu.supabase.co';
-  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpobWN5aWlsZm5kcGRpeXV0bnp1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3MDc5OTAsImV4cCI6MjA5NDI4Mzk5MH0.XS_Ewu1GPMYuep6X9wPdzKjtqIwQhkt9ptpv73dLWj4';
-
-  getStudentId(); // 确保 studentId 存在
-
-  // 初始化 tracker（密钥验证需要访问 Supabase）
-  if (typeof tracker !== 'undefined') {
-    tracker.init({
-      module: 'platform',
-      supabaseUrl: SUPABASE_URL,
-      supabaseAnonKey: SUPABASE_ANON_KEY,
-    });
-  }
-
+  // ── 初始化 ──
   updateUIState();
 
   // 未登录 → 弹出登录
-  if (!isLoggedIn()) {
+  if (!tracker.isLoggedIn()) {
     showAuthModal('login');
   }
 </script>
