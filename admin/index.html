@@ -486,7 +486,7 @@
 
 <div class="tab-bar">
   <button class="tab-btn active" data-tab="overview">📊 总览</button>
-  <button class="tab-btn" data-tab="students">👥 学生画像</button>
+  <button class="tab-btn" data-tab="students">📊 同义替换统计</button>
   <button class="tab-btn" data-tab="heatmap">🔥 错题热力图</button>
   <button class="tab-btn" data-tab="memory">🧠 遗忘曲线</button>
   <button class="tab-btn" data-tab="keys">🔑 密钥管理</button>
@@ -511,18 +511,25 @@
 
   <!-- Tab: Students -->
   <div class="tab-panel" id="tab-students">
+    <div class="stats-row" id="synonymStatsOverview">
+      <div class="stat-card"><div class="stat-value purple" id="syn-totalDuration">—</div><div class="stat-label">总训练时长</div></div>
+      <div class="stat-card"><div class="stat-value green" id="syn-totalRight">—</div><div class="stat-label">找对总词数</div></div>
+      <div class="stat-card"><div class="stat-value gold" id="syn-totalWords">—</div><div class="stat-label">练习总词数</div></div>
+      <div class="stat-card"><div class="stat-value blue" id="syn-avgAccuracy">—</div><div class="stat-label">平均正确率</div></div>
+    </div>
+
     <div class="card">
       <div class="card-title">
-        <span class="icon">👥</span> 学生行为画像
-        <button class="report-btn" style="margin-left:auto;" onclick="exportStudentReport()">📥 导出统计报告</button>
+        <span class="icon">📊</span> 同义替换训练统计
+        <button class="report-btn" style="margin-left:auto;" onclick="exportSynonymReport()">📥 导出报告</button>
       </div>
       <div class="filter-bar">
-        <input type="text" id="studentSearch" placeholder="搜索姓名/用户名..." oninput="renderStudentsTable()">
-        <select id="batchFilter" onchange="renderStudentsTable()">
-          <option value="">全部批次</option>
+        <input type="text" id="studentSearch" placeholder="搜索姓名/用户名..." oninput="renderSynonymTable()">
+        <select id="batchFilter" onchange="renderSynonymTable()">
+          <option value="">全部班级</option>
         </select>
       </div>
-      <div id="studentsTable">
+      <div id="synonymTable">
         <div class="empty-state"><span class="icon">📭</span>暂无学生数据<br><small>学生开始练习后数据将自动出现</small></div>
       </div>
     </div>
@@ -581,30 +588,28 @@
     </div>
 
     <div class="card">
-      <div class="card-title"><span class="icon">🔑</span> 批量生成密钥</div>
+      <div class="card-title"><span class="icon">🔑</span> 生成密钥</div>
       <div class="gen-form" id="genForm">
         <div class="config-field">
-          <label>生成数量</label>
-          <select id="genCount">
-            <option value="50">50</option>
-            <option value="100">100</option>
-            <option value="500">500</option>
-          </select>
+          <label>学生姓名 *</label>
+          <input type="text" id="genStudentName" placeholder="必填，多个用逗号分隔" style="width:200px;">
         </div>
         <div class="config-field">
           <label>课程名称</label>
-          <input type="text" id="genCourseName" placeholder="如：雅思写作强化班">
+          <input type="text" id="genCourseName" placeholder="如：雅思写作强化班" style="width:180px;">
         </div>
         <div class="config-field">
           <label>班级名称</label>
-          <input type="text" id="genClassName" placeholder="如：2026春季班">
+          <input type="text" id="genClassName" placeholder="如：2026春季班" style="width:140px;">
         </div>
         <div class="config-field">
           <label>过期时间</label>
-          <input type="date" id="genExpiresAt">
+          <input type="date" id="genExpiresAt" style="width:140px;">
         </div>
-        <button class="gen-btn" id="genBtn" onclick="handleBatchGenerateKeys()">批量生成</button>
+        <button class="gen-btn" id="genBtn" onclick="handleGenerateKey()">生成</button>
       </div>
+      <div style="font-size:11px;color:var(--text-dimmer);margin-top:8px;">💡 可一次输入多个姓名（用中文逗号或英文逗号分隔），批量生成。按 Enter 快速提交。</div>
+      <div id="genResult" style="display:none;margin-top:12px;padding:12px 16px;background:var(--bg-card2);border:1px solid var(--border);border-radius:10px;max-height:300px;overflow-y:auto;"></div>
     </div>
 
     <div class="card" style="margin-top:16px;">
@@ -799,92 +804,118 @@
     ctx.fillText('正确率', padL + 128, 14);
   }
 
-  // ── Students ──
+  // ── Students / Synonym Stats ──
+  let _synonymStats = [];
+
   async function loadStudents() {
-    const overview = await adminTracker.getAdminStudentsOverview();
-    _allStudents = overview || [];
-    populateBatchFilter();
-    renderStudentsTable();
+    // 使用同义替换专项统计
+    const stats = await adminTracker.getAdminSynonymStats();
+    _synonymStats = stats || [];
+    populateClassFilter();
+    renderSynonymTable();
+    updateSynonymOverview();
   }
 
-  function populateBatchFilter() {
+  function populateClassFilter() {
     const select = document.getElementById('batchFilter');
     if (!select) return;
     const currentVal = select.value;
-    // Collect batch_ids from keys data
-    const batchIds = [...new Set(_allKeys.map(k => k.batch_id).filter(Boolean))];
-    select.innerHTML = '<option value="">全部批次</option>';
-    batchIds.sort().forEach(bid => {
+    const classes = [...new Set(_synonymStats.map(s => s.className).filter(Boolean))];
+    select.innerHTML = '<option value="">全部班级</option>';
+    classes.sort().forEach(cls => {
       const opt = document.createElement('option');
-      opt.value = bid;
-      opt.textContent = bid;
+      opt.value = cls;
+      opt.textContent = cls;
       select.appendChild(opt);
     });
     select.value = currentVal;
   }
 
-  function renderStudentsTable() {
-    const container = document.getElementById('studentsTable');
-    const searchVal = (document.getElementById('studentSearch')?.value || '').trim().toLowerCase();
-    const batchVal = document.getElementById('batchFilter')?.value || '';
+  function updateSynonymOverview() {
+    const totalDuration = _synonymStats.reduce((sum, s) => sum + s.totalDurationMs, 0);
+    const totalRight = _synonymStats.reduce((sum, s) => sum + s.rightWords, 0);
+    const totalWords = _synonymStats.reduce((sum, s) => sum + s.totalWords, 0);
+    const avgAccuracy = totalWords > 0 ? Math.round(totalRight / totalWords * 100) : 0;
 
-    let students = [..._allStudents];
+    document.getElementById('syn-totalDuration').textContent = formatDuration(totalDuration);
+    document.getElementById('syn-totalRight').textContent = totalRight;
+    document.getElementById('syn-totalWords').textContent = totalWords;
+    document.getElementById('syn-avgAccuracy').textContent = totalWords > 0 ? avgAccuracy + '%' : '—';
+  }
+
+  function formatDuration(ms) {
+    if (!ms || ms === 0) return '—';
+    const sec = Math.round(ms / 1000);
+    if (sec < 60) return sec + '秒';
+    if (sec < 3600) return Math.floor(sec / 60) + '分' + (sec % 60) + '秒';
+    return Math.floor(sec / 3600) + '小时' + Math.floor((sec % 3600) / 60) + '分';
+  }
+
+  function renderSynonymTable() {
+    const container = document.getElementById('synonymTable');
+    const searchVal = (document.getElementById('studentSearch')?.value || '').trim().toLowerCase();
+    const classVal = document.getElementById('batchFilter')?.value || '';
+
+    let rows = [..._synonymStats];
 
     // Filter by search
     if (searchVal) {
-      students = students.filter(s =>
-        (s.real_name || '').toLowerCase().includes(searchVal) ||
-        (s.username || '').toLowerCase().includes(searchVal)
+      rows = rows.filter(r =>
+        (r.realName || '').toLowerCase().includes(searchVal) ||
+        (r.username || '').toLowerCase().includes(searchVal)
       );
     }
 
-    // Filter by batch_id (via bound_key lookup)
-    if (batchVal) {
-      const keysInBatch = _allKeys.filter(k => k.batch_id === batchVal && k.used_by);
-      const usernamesInBatch = new Set(keysInBatch.map(k => k.used_by));
-      students = students.filter(s => usernamesInBatch.has(s.username));
+    // Filter by class
+    if (classVal) {
+      rows = rows.filter(r => r.className === classVal);
     }
 
-    if (students.length === 0) {
-      container.innerHTML = '<div class="empty-state"><span class="icon">📭</span>暂无学生数据</div>';
+    if (rows.length === 0) {
+      container.innerHTML = '<div class="empty-state"><span class="icon">📭</span>暂无同义替换练习数据</div>';
       return;
     }
 
+    // Calculate column widths for stats
+    const maxDuration = Math.max(...rows.map(r => r.totalDurationMs));
+    const maxWords = Math.max(...rows.map(r => r.totalWords));
+
     let html = `<table class="data-table">
       <thead><tr>
-        <th>真实姓名</th><th>用户名</th><th>班级</th><th>绑定密钥</th><th>绑定课程</th>
-        <th>轮次</th><th>总答题</th><th>正确率</th><th>平均响应</th><th>最后活跃</th><th>类型</th><th>操作</th>
+        <th>姓名</th><th>用户名</th><th>班级</th>
+        <th>总训练时长</th><th>练习词数</th><th>找对词数</th><th>正确率</th><th>最后活跃</th>
       </tr></thead><tbody>`;
 
-    students.forEach(s => {
-      const type = s.behavior_type || 'balanced';
-      const badge = type === 'cautious' ? '谨慎型' : type === 'impulsive' ? '冲动型' : '均衡型';
-      const accPct = s.accuracy_pct != null ? s.accuracy_pct + '%' : '—';
-      const avgMs = s.avg_response_ms ? (s.avg_response_ms / 1000).toFixed(1) + 's' : '—';
-      const lastActive = s.last_active ? new Date(s.last_active).toLocaleString('zh-CN', { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' }) : '—';
-      const realName = s.real_name || '—';
-      const username = s.username || '—';
-      const boundKey = s.bound_key || '—';
-      const boundCourse = s.bound_course || '—';
-      const className = s.class_name || '—';
-      const safeUsername = (username || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+    rows.forEach(r => {
+      const accuracyPct = r.totalWords > 0 ? Math.round(r.rightWords / r.totalWords * 100) : 0;
+      const accColor = accuracyPct >= 80 ? 'var(--green)' : accuracyPct >= 60 ? 'var(--gold)' : 'var(--red)';
+      const lastActive = r.lastActive
+        ? new Date(r.lastActive).toLocaleString('zh-CN', { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' })
+        : '—';
 
       html += `<tr>
-        <td style="color:var(--text);font-weight:500;">${realName}</td>
-        <td style="font-family:monospace;font-size:12px;">${username}</td>
-        <td>${className}</td>
-        <td style="color:var(--purple);font-family:monospace;font-size:12px;">${boundKey}</td>
-        <td>${boundCourse}</td>
-        <td>${s.total_sessions || 0}</td>
-        <td>${s.total_answers || 0}</td>
-        <td>${accPct}</td>
-        <td>${avgMs}</td>
-        <td style="font-size:11px;color:var(--text-dimmer);">${lastActive}</td>
-        <td><span class="badge ${type}">${badge}</span></td>
+        <td style="font-weight:500;">${r.realName || '—'}</td>
+        <td style="font-family:monospace;font-size:12px;">${r.username || '—'}</td>
+        <td><span style="background:rgba(139,92,246,0.15);color:var(--purple);padding:2px 10px;border-radius:6px;font-size:11px;">${r.className || '—'}</span></td>
         <td>
-          <button class="pw-btn" onclick="lookupPassword('${safeUsername}')">查看密码</button>
-          <button style="background:none;border:1px solid var(--border);color:var(--text-dim);padding:4px 10px;border-radius:6px;cursor:pointer;font-size:12px;margin-left:4px;" onclick="showStudentDetail('${(s.student_id || '').replace(/'/g, "\\'")}')">详情</button>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div style="flex:1;height:8px;background:rgba(255,255,255,0.06);border-radius:4px;overflow:hidden;max-width:100px;">
+              <div style="width:${maxDuration > 0 ? Math.round(r.totalDurationMs / maxDuration * 100) : 0}%;height:100%;background:var(--purple);border-radius:4px;"></div>
+            </div>
+            <span style="font-size:12px;color:var(--text-dim);min-width:50px;">${formatDuration(r.totalDurationMs)}</span>
+          </div>
         </td>
+        <td style="color:var(--gold);font-weight:600;">${r.totalWords}</td>
+        <td style="color:var(--green);font-weight:600;">${r.rightWords}</td>
+        <td>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div style="flex:1;height:8px;background:rgba(255,255,255,0.06);border-radius:4px;overflow:hidden;max-width:60px;">
+              <div style="width:${accuracyPct}%;height:100%;background:${accColor};border-radius:4px;"></div>
+            </div>
+            <span style="font-size:12px;color:${accColor};font-weight:600;min-width:36px;">${accuracyPct}%</span>
+          </div>
+        </td>
+        <td style="font-size:11px;color:var(--text-dimmer);">${lastActive}</td>
       </tr>`;
     });
 
@@ -892,86 +923,30 @@
     container.innerHTML = html;
   }
 
-  async function lookupPassword(username) {
-    if (!username || username === '—') {
-      showToast('无有效用户名', 'error');
+  function exportSynonymReport() {
+    if (_synonymStats.length === 0) {
+      showToast('暂无数据可导出', 'error');
       return;
     }
-    try {
-      const pw = await adminTracker.adminLookupPassword(username);
-      if (pw) {
-        alert(`用户 ${username} 的密码：${pw}`);
-      } else {
-        alert(`未找到用户 ${username} 的密码记录`);
-      }
-    } catch (e) {
-      showToast('查询失败：' + (e.message || e), 'error');
-    }
-  }
 
-  // ── Student Detail Modal ──
-  async function showStudentDetail(studentId) {
-    const modal = document.getElementById('studentModal');
-    const content = document.getElementById('modalContent');
+    const data = _synonymStats.map(s => {
+      const accuracy = s.totalWords > 0 ? Math.round(s.rightWords / s.totalWords * 100) + '%' : '—';
+      return {
+        '真实姓名': s.realName || '',
+        '用户名': s.username || '',
+        '班级': s.className || '',
+        '总训练时长': formatDuration(s.totalDurationMs),
+        '练习词数': s.totalWords,
+        '找对词数': s.rightWords,
+        '正确率': accuracy,
+        '最后活跃': s.lastActive ? new Date(s.lastActive).toLocaleString('zh-CN') : '',
+      };
+    });
 
-    const student = _allStudents.find(s => s.student_id === studentId);
-    const displayName = student?.real_name || student?.username || studentId.slice(0, 16);
-    document.getElementById('modalStudentName').textContent = `学生 ${displayName}`;
-
-    const totalAnswers = student?.total_answers || 0;
-    const accuracy = student?.accuracy_pct || 0;
-    const avgMs = student?.avg_response_ms || 0;
-
-    let html = `
-      <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;">
-        <div class="stat-card" style="flex:1;min-width:100px;"><div class="stat-value green">${accuracy}%</div><div class="stat-label">正确率</div></div>
-        <div class="stat-card" style="flex:1;min-width:100px;"><div class="stat-value gold">${totalAnswers}</div><div class="stat-label">总答题</div></div>
-        <div class="stat-card" style="flex:1;min-width:100px;"><div class="stat-value purple">${student?.total_sessions || 0}</div><div class="stat-label">轮次</div></div>
-      </div>
-      <div style="margin-bottom:16px;display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--text-dim);">
-        <span>用户名：<strong style="color:var(--text);">${student?.username || '—'}</strong></span>
-        <span>班级：<strong style="color:var(--text);">${student?.class_name || '—'}</strong></span>
-        <span>绑定密钥：<strong style="color:var(--purple);font-family:monospace;">${student?.bound_key || '—'}</strong></span>
-        <span>绑定课程：<strong style="color:var(--text);">${student?.bound_course || '—'}</strong></span>
-      </div>
-      <div style="font-size:13px;color:var(--text-dim);margin-bottom:12px;">
-        平均响应时间：${avgMs ? (avgMs/1000).toFixed(1) + 's' : '—'}<br>
-        最后活跃：${student?.last_active ? new Date(student.last_active).toLocaleString('zh-CN') : '—'}
-      </div>
-      <div style="font-size:13px;color:var(--text-dimmer);padding:8px 0;">
-        详细行为画像和错题记录功能开发中...
-      </div>`;
-
-    content.innerHTML = html;
-    modal.classList.add('show');
-  }
-
-  function closeModal() {
-    document.getElementById('studentModal').classList.remove('show');
-  }
-
-  document.getElementById('studentModal').addEventListener('click', (e) => {
-    if (e.target === e.currentTarget) closeModal();
-  });
-
-  // ── Export Student Report ──
-  function exportStudentReport() {
-    if (_allStudents.length === 0) {
-      showToast('暂无学生数据可导出', 'error');
-      return;
-    }
-    const data = _allStudents.map(s => ({
-      '真实姓名': s.real_name || '',
-      '用户名': s.username || '',
-      '绑定密钥': s.bound_key || '',
-      '课程名称': s.bound_course || '',
-      '正确率': s.accuracy_pct != null ? s.accuracy_pct + '%' : '',
-      '最后活跃': s.last_active || '',
-    }));
     const ws = XLSX.utils.json_to_sheet(data);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, '学生统计报告');
-    XLSX.writeFile(wb, `学生统计报告_${new Date().toISOString().slice(0,10)}.xlsx`);
+    XLSX.utils.book_append_sheet(wb, ws, '同义替换统计');
+    XLSX.writeFile(wb, `同义替换统计_${new Date().toISOString().slice(0,10)}.xlsx`);
     showToast('报告已导出', 'success');
   }
 
@@ -1198,26 +1173,84 @@
     container.innerHTML = html;
   }
 
-  async function handleBatchGenerateKeys() {
-    const count = parseInt(document.getElementById('genCount').value) || 50;
+  // Enter 键快速生成
+  document.getElementById('genStudentName')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); handleGenerateKey(); }
+  });
+
+  async function handleGenerateKey() {
+    const rawNames = document.getElementById('genStudentName').value.trim();
     const courseName = document.getElementById('genCourseName').value.trim() || null;
     const className = document.getElementById('genClassName').value.trim() || null;
     const expiresAtInput = document.getElementById('genExpiresAt').value;
     const expiresAt = expiresAtInput ? new Date(expiresAtInput + 'T23:59:59').toISOString() : null;
-    const batchId = 'batch_' + Date.now().toString(36);
+
+    if (!rawNames) {
+      showToast('请填写学生姓名', 'error');
+      document.getElementById('genStudentName').focus();
+      return;
+    }
+
+    // 支持中文逗号、英文逗号分隔多个姓名
+    const names = rawNames.split(/[,，]/).map(n => n.trim()).filter(Boolean);
+    if (names.length === 0) {
+      showToast('请填写学生姓名', 'error');
+      return;
+    }
 
     const btn = document.getElementById('genBtn');
     btn.disabled = true;
-    btn.textContent = '生成中...';
+    btn.textContent = names.length > 1 ? `生成中 (0/${names.length})...` : '生成中...';
+
+    const resultEl = document.getElementById('genResult');
+    resultEl.style.display = 'block';
+    let resultHtml = '';
+    let successCount = 0;
+
     try {
-      const keys = await adminTracker.batchGenerateKeys(count, courseName, className, expiresAt);
-      showToast(`成功生成 ${keys.length} 个密钥（批次：${batchId}）`, 'success');
+      for (let i = 0; i < names.length; i++) {
+        const name = names[i];
+        btn.textContent = names.length > 1 ? `生成中 (${i+1}/${names.length})...` : '生成中...';
+        try {
+          const keyObj = await adminTracker.generateSingleKey(name, courseName, className, expiresAt);
+          console.log('[生成密钥] 返回结果:', keyObj);
+          if (keyObj && keyObj.key) {
+            successCount++;
+            const safeKey = keyObj.key.replace(/'/g, "\\'");
+            resultHtml += `
+              <div style="display:flex;align-items:center;gap:10px;padding:6px 0;${i > 0 ? 'border-top:1px solid rgba(255,255,255,0.04);' : ''}">
+                <span style="color:var(--green);font-size:13px;">✓</span>
+                <span style="color:var(--text);font-size:13px;font-weight:500;min-width:60px;">${name}</span>
+                <code style="font-size:15px;font-weight:700;color:var(--purple);letter-spacing:1.5px;background:rgba(139,92,246,0.08);padding:3px 10px;border-radius:6px;">${keyObj.key}</code>
+                <button class="copy-btn" onclick="copyToClipboard('${safeKey}')">复制</button>
+              </div>`;
+          } else {
+            resultHtml += `
+              <div style="display:flex;align-items:center;gap:10px;padding:6px 0;${i > 0 ? 'border-top:1px solid rgba(255,255,255,0.04);' : ''}">
+                <span style="color:var(--red);font-size:13px;">✗</span>
+                <span style="color:var(--text);font-size:13px;font-weight:500;">${name}</span>
+                <span style="color:var(--red);font-size:12px;">生成失败</span>
+              </div>`;
+          }
+        } catch (e) {
+          resultHtml += `
+            <div style="display:flex;align-items:center;gap:10px;padding:6px 0;${i > 0 ? 'border-top:1px solid rgba(255,255,255,0.04);' : ''}">
+              <span style="color:var(--red);font-size:13px;">✗</span>
+              <span style="color:var(--text);font-size:13px;font-weight:500;">${name}</span>
+              <span style="color:var(--red);font-size:12px;">${e.message || '失败'}</span>
+            </div>`;
+        }
+      }
+
+      resultEl.innerHTML = resultHtml;
+      showToast(`已生成 ${successCount}/${names.length} 个密钥`, successCount === names.length ? 'success' : 'error');
+      // 清空姓名输入框，方便连续录入
+      document.getElementById('genStudentName').value = '';
+      document.getElementById('genStudentName').focus();
       loadKeys();
-    } catch (e) {
-      showToast('生成失败：' + (e.message || e), 'error');
     } finally {
       btn.disabled = false;
-      btn.textContent = '批量生成';
+      btn.textContent = '生成';
     }
   }
 

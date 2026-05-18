@@ -55,10 +55,10 @@ G:\网站\同义替换\
   - `getUsername()` / `getStudentName()` / `getStudentClass()`
   - `setStudentProfile({ name, username, className })`
 - 本地聚合：getDailyStats / getErrorItems / getBehaviorProfile / getSessionSummaries / getWrongAnswers
-- 管理端：getAdminStudentsOverview / getAdminDailyStats / getAdminBehaviorProfile / getErrorHeatmap
+- 管理端：getAdminStudentsOverview / getAdminSynonymStats / getAdminDailyStats / getAdminBehaviorProfile / getAdminMemoryOverview / getErrorHeatmap
 - 遗忘曲线 API：updateMemoryState / getDueItems / getReviewSchedule / getMemoryOverview / getAllMemoryStates
 - **v6 密钥管理**：
-  - `batchGenerateKeys(count, courseName?, className?, expiresAt?)` — 批量生成（调 batch_generate_keys RPC）
+  - `generateSingleKey(studentName, courseName?, className?, expiresAt?)` — 逐个生成（必填学生姓名，调 batch_generate_keys RPC count=1）
   - `getKeys()` — 获取所有密钥（从 v_access_keys 视图）
   - `revokeKey(key)` — 撤销密钥
   - `adminLookupPassword(username)` — 管理员查询密码原文
@@ -75,7 +75,7 @@ G:\网站\同义替换\
   - `register_student(p_id, p_username, p_password_hash, p_password_raw)` — 注册
   - `login_student(p_username, p_password_hash)` — 登录+失败锁定
   - `bind_key_to_student(p_student_id, p_key_string, p_real_name)` — 密钥绑定
-  - `batch_generate_keys(p_count, p_course_name, p_class_name, p_batch_id, p_expires_at)` — 批量生成
+  - `batch_generate_keys(p_count, p_student_name, p_course_name, p_class_name, p_batch_id, p_expires_at)` — 生成密钥（含学生姓名）
   - `check_username_exists(p_username)` — 用户名查重
   - `admin_lookup_password(p_username)` — 管理员查密码
   - `get_admin_students_summary()` — 学生摘要（含 username, real_name, bound_key, course）
@@ -83,6 +83,7 @@ G:\网站\同义替换\
   - `get_admin_behavior_profile()` — 行为画像
   - `get_admin_error_heatmap()` — 错误热力图
   - `get_admin_memory_overview()` — 记忆状态概览
+  - `get_admin_synonym_stats()` — 同义替换专项统计（2026-05-18）
 - RLS 策略：students/access_keys 用 `FOR ALL USING (true) WITH CHECK (true)`，其余相同
 
 ## 同义替换模块
@@ -106,6 +107,14 @@ G:\网站\同义替换\
 
 ## 管理端（admin/index.html）
 - 5个 Tab：总览 / 学生画像 / 错题热力图 / 遗忘曲线 / 设置
+- **学生画像 Tab（2026-05-18 重构）**：
+  - 删除了原有的复杂多模块画像
+  - 新增同义替换专项统计：总训练时长、找对词数占比
+  - 顶部4个统计卡片：总训练时长 / 找对总词数 / 练习总词数 / 平均正确率
+  - 表格列：姓名、用户名、班级、总训练时长、练习词数、找对词数、正确率、最后活跃
+  - 支持按班级筛选、按姓名/用户名搜索
+  - 新增 RPC 函数：`get_admin_synonym_stats()`
+  - 新增 tracker API：`getAdminSynonymStats()`
 - 学生画像表格显示「姓名」+「班级」列（班级蓝色标签）
 - 学生详情弹窗标题格式：姓名 · 班级
 - 遗忘曲线 Tab：

@@ -407,11 +407,13 @@ const tracker = (() => {
         body: JSON.stringify(body),
       });
       if (res.ok) return await res.json();
-      console.warn(`[Tracker] RPC ${fnName} failed:`, res.status);
+      const errText = await res.text().catch(() => '');
+      console.error(`[Tracker] RPC ${fnName} failed:`, res.status, errText, 'body:', JSON.stringify(body));
+      return null;
     } catch (e) {
       console.warn(`[Tracker] RPC ${fnName} error:`, e.message);
+      return null;
     }
-    return null;
   }
 
   async function _supabaseFetch(table, query = '') {
@@ -448,7 +450,7 @@ const tracker = (() => {
    */
   async function checkUsernameExists(username) {
     const result = await _supabaseRpc('check_username_exists', { p_username: username });
-    return result && result[0] && result[0].exists === true;
+    return result && result[0] && result[0].username_exists === true;
   }
 
   /**
@@ -469,7 +471,7 @@ const tracker = (() => {
         p_password_raw: password,  // 管理员可查
       });
 
-      if (result && result[0] && result[0].id) {
+      if (result && result[0] && result[0].out_id) {
         // 注册成功
         _studentId = studentId;
         localStorage.setItem(STUDENT_ID_KEY, studentId);
@@ -639,23 +641,39 @@ const tracker = (() => {
   // ══════════════════════════════════════════════════
 
   /**
-   * 批量生成密钥
-   * @param {number} count
+   * 生成单个密钥（带学生姓名）
+   * @param {string} studentName - 学生姓名（必填）
    * @param {string} [courseName]
    * @param {string} [className]
    * @param {string} [expiresAt] - ISO datetime
-   * @returns {Promise<Array>}
+   * @returns {Promise<Object|null>} 生成的密钥对象
    */
-  async function batchGenerateKeys(count, courseName, className, expiresAt) {
-    const batchId = 'batch_' + Date.now().toString(36);
-    const result = await _supabaseRpc('batch_generate_keys', {
-      p_count: count,
+  async function generateSingleKey(studentName, courseName, className, expiresAt) {
+    if (!studentName || !studentName.trim()) {
+      throw new Error('学生姓名不能为空');
+    }
+    const batchId = 'single_' + Date.now().toString(36);
+
+    // 调用 RPC，返回值是密钥字符串（简单可靠）
+    const generatedKey = await _supabaseRpc('batch_generate_keys', {
+      p_count: 1,
+      p_student_name: studentName.trim(),
       p_course_name: courseName || null,
       p_class_name: className || null,
       p_batch_id: batchId,
       p_expires_at: expiresAt || null,
     });
-    return result || [];
+
+    if (!generatedKey) return null;
+
+    // generatedKey 可能是字符串 "ABCD-EFGH-IJKL" 或数组 [{...}]
+    const keyString = Array.isArray(generatedKey) ? generatedKey[0] : generatedKey;
+    if (!keyString) return null;
+
+    // 查询完整密钥对象
+    const rows = await _supabaseFetch('access_keys', `?key=eq.${encodeURIComponent(keyString)}&limit=1`);
+    if (rows && rows.length > 0) return rows[0];
+    return null;
   }
 
   /**
@@ -691,6 +709,33 @@ const tracker = (() => {
     return result || [];
   }
 
+  // 按模块细分的学生画像（新的详细视图）
+  async function getAdminStudentsProfile() {
+    const result = await _supabaseRpc('get_admin_students_profile');
+    return result || [];
+  }
+
+  // 同义替换专项统计
+  async function getAdminSynonymStats() {
+    const result = await _supabaseRpc('get_admin_synonym_stats');
+    if (!result) return [];
+    return result.map(r => ({
+      studentId: r.student_id,
+      username: r.username,
+      realName: r.real_name,
+      className: r.class_name,
+      boundKey: r.bound_key,
+      boundCourse: r.bound_course,
+      totalSessions: parseInt(r.total_sessions) || 0,
+      totalDurationMs: parseInt(r.total_duration_ms) || 0,
+      totalWords: parseInt(r.total_words) || 0,
+      rightWords: parseInt(r.right_words) || 0,
+      wrongWords: parseInt(r.wrong_words) || 0,
+      accuracyPct: parseFloat(r.accuracy_pct) || 0,
+      lastActive: r.last_active,
+    }));
+  }
+
   async function getAdminDailyStats(days = 7) {
     const result = await _supabaseRpc('get_admin_daily_stats', { days_int: days });
     if (!result) return [];
@@ -703,6 +748,10 @@ const tracker = (() => {
 
   async function getAdminBehaviorProfile() {
     return await _supabaseRpc('get_admin_behavior_profile');
+  }
+
+  async function getAdminMemoryOverview() {
+    return await _supabaseRpc('get_admin_memory_overview');
   }
 
   async function getErrorHeatmap() {
@@ -882,9 +931,10 @@ const tracker = (() => {
     sha256, registerStudent, loginStudent, createSession,
     checkUsernameExists, validateKey, bindKeyToStudent,
     // v6 密钥管理
-    batchGenerateKeys, getKeys, revokeKey, adminLookupPassword,
+    generateSingleKey, getKeys, revokeKey, adminLookupPassword,
     // 管理端
-    getAdminStudentsOverview, getAdminDailyStats, getAdminBehaviorProfile,
+    getAdminStudentsOverview, getAdminStudentsProfile, getAdminSynonymStats,
+    getAdminDailyStats, getAdminBehaviorProfile, getAdminMemoryOverview,
     getErrorHeatmap, getStudentsOverview,
   };
 })();

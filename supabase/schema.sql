@@ -6,6 +6,7 @@
 
 -- ── 0. 清除旧数据（全新开始）──
 DROP FUNCTION IF EXISTS get_admin_students_summary() CASCADE;
+DROP FUNCTION IF EXISTS get_admin_students_profile() CASCADE;
 DROP FUNCTION IF EXISTS get_admin_daily_stats(INT) CASCADE;
 DROP FUNCTION IF EXISTS get_admin_behavior_profile() CASCADE;
 DROP FUNCTION IF EXISTS get_admin_error_heatmap() CASCADE;
@@ -15,6 +16,7 @@ DROP FUNCTION IF EXISTS register_student(TEXT, TEXT, TEXT, TEXT) CASCADE;
 DROP FUNCTION IF EXISTS login_student(TEXT, TEXT) CASCADE;
 DROP FUNCTION IF EXISTS bind_key_to_student(TEXT, TEXT, TEXT) CASCADE;
 DROP FUNCTION IF EXISTS batch_generate_keys(INT, TEXT, TEXT, TEXT, TIMESTAMPTZ) CASCADE;
+DROP FUNCTION IF EXISTS batch_generate_keys(INT, TEXT, TEXT, TEXT, TEXT, TIMESTAMPTZ) CASCADE;
 DROP FUNCTION IF EXISTS check_username_exists(TEXT) CASCADE;
 DROP FUNCTION IF EXISTS admin_lookup_password(TEXT) CASCADE;
 
@@ -293,7 +295,7 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- ── 10. 登录函数（密码验证+失败锁定） ──
-CREATE FUNCTION login_student(
+CREATE OR REPLACE FUNCTION login_student(
   p_username      TEXT,
   p_password_hash TEXT
 )
@@ -311,7 +313,7 @@ DECLARE
   v_locked BOOLEAN := false;
   v_remaining INT := 0;
 BEGIN
-  SELECT * INTO v_student FROM students WHERE username = p_username;
+  SELECT * INTO v_student FROM students WHERE students.username = p_username;
 
   IF NOT FOUND THEN
     RETURN;
@@ -330,22 +332,22 @@ BEGIN
 
   -- 锁定过期则解锁
   IF v_student.locked_until IS NOT NULL AND v_student.locked_until <= now() THEN
-    UPDATE students SET failed_attempts = 0, locked_until = NULL WHERE id = v_student.id;
+    UPDATE students SET failed_attempts = 0, locked_until = NULL WHERE students.id = v_student.id;
     v_student.failed_attempts := 0;
   END IF;
 
   -- 验证密码
   IF v_student.password_hash = p_password_hash THEN
     UPDATE students SET failed_attempts = 0, locked_until = NULL, last_active = now()
-    WHERE id = v_student.id;
+    WHERE students.id = v_student.id;
     RETURN QUERY SELECT
       v_student.id, v_student.username, v_student.real_name,
       v_student.class_name, v_student.bound_key_id,
       false, 0;
   ELSE
-    UPDATE students SET failed_attempts = failed_attempts + 1 WHERE id = v_student.id;
+    UPDATE students SET failed_attempts = failed_attempts + 1 WHERE students.id = v_student.id;
     IF v_student.failed_attempts + 1 >= 5 THEN
-      UPDATE students SET locked_until = now() + interval '15 minutes' WHERE id = v_student.id;
+      UPDATE students SET locked_until = now() + interval '15 minutes' WHERE students.id = v_student.id;
     END IF;
     RETURN;
   END IF;
@@ -407,41 +409,46 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- ── 12. 批量生成密钥 ──
+-- ── 12. 生成密钥（支持逐个/批量，含学生姓名） ──
+-- 注意：使用 RETURNS TEXT 简单返回密钥字符串，避免 RETURNS TABLE 在 PostgREST RPC 中的兼容性问题
+-- 客户端负责用 key 字段查询 access_keys 表获取完整对象
 CREATE FUNCTION batch_generate_keys(
-  p_count       INT,
-  p_course_name TEXT DEFAULT NULL,
-  p_class_name  TEXT DEFAULT NULL,
-  p_batch_id    TEXT DEFAULT NULL,
-  p_expires_at  TIMESTAMPTZ DEFAULT NULL
+  p_count        INT,
+  p_student_name TEXT DEFAULT NULL,
+  p_course_name  TEXT DEFAULT NULL,
+  p_class_name   TEXT DEFAULT NULL,
+  p_batch_id     TEXT DEFAULT NULL,
+  p_expires_at   TIMESTAMPTZ DEFAULT NULL
 )
-RETURNS SETOF access_keys AS $$
+RETURNS TEXT
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
 DECLARE
-  i INT;
+  i          INT;
   v_key_text TEXT;
-  v_row access_keys%ROWTYPE;
 BEGIN
   FOR i IN 1..p_count LOOP
-    v_key_text := upper(substring(md5(random()::text || clock_timestamp()::text) from 1 for 4))
+    v_key_text :=
+      upper(substring(md5(random()::text || clock_timestamp()::text) from 1 for 4))
       || '-' || upper(substring(md5(random()::text || clock_timestamp()::text) from 1 for 4))
       || '-' || upper(substring(md5(random()::text || clock_timestamp()::text) from 1 for 4));
 
-    INSERT INTO access_keys (key, course_name, class_name, batch_id, expires_at, is_active, created_at)
-    VALUES (v_key_text, p_course_name, p_class_name, p_batch_id, p_expires_at, true, now())
-    RETURNING * INTO v_row;
-
-    RETURN NEXT v_row;
+    INSERT INTO access_keys (key, student_name, course_name, class_name, batch_id, expires_at, is_active, created_at)
+    VALUES (v_key_text, p_student_name, p_course_name, p_class_name, p_batch_id, p_expires_at, true, now());
   END LOOP;
+
+  RETURN v_key_text;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$;
 
 -- ── 13. 检查用户名是否已注册 ──
 CREATE FUNCTION check_username_exists(
   p_username TEXT
 )
-RETURNS TABLE(exists BOOLEAN) AS $$
+RETURNS TABLE(username_exists BOOLEAN) AS $$
 BEGIN
-  RETURN QUERY SELECT EXISTS(SELECT 1 FROM students WHERE username = p_username);
+  RETURN QUERY SELECT EXISTS(SELECT 1 FROM students WHERE students.username = p_username);
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
@@ -666,5 +673,162 @@ BEGIN
   LEFT JOIN memory_states m ON m.student_id = s.id
   GROUP BY s.id, s.real_name, s.class_name
   ORDER BY s.real_name;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- ── 18. 同义替换专项统计 ──
+CREATE OR REPLACE FUNCTION get_admin_synonym_stats()
+RETURNS TABLE (
+  student_id        TEXT,
+  username          TEXT,
+  real_name         TEXT,
+  class_name        TEXT,
+  bound_key         TEXT,
+  bound_course      TEXT,
+  total_sessions    BIGINT,
+  total_duration_ms BIGINT,
+  total_words       BIGINT,
+  right_words       BIGINT,
+  wrong_words       BIGINT,
+  accuracy_pct      NUMERIC,
+  last_active       TIMESTAMPTZ
+) AS $$
+BEGIN
+  RETURN QUERY
+  WITH session_stats AS (
+    SELECT
+      e.student_id,
+      COUNT(DISTINCT e.session_id) AS total_sessions,
+      SUM((e.payload->>'durationMs')::BIGINT) AS total_duration_ms,
+      SUM((e.payload->>'rightCount')::INT) AS total_right,
+      SUM((e.payload->>'wrongCount')::INT) AS total_wrong,
+      MAX(e.created_at) AS last_active
+    FROM practice_events e
+    WHERE e.module_id = 'synonym' AND e.event_type = 'end_session'
+    GROUP BY e.student_id
+  )
+  SELECT
+    s.id                                    AS student_id,
+    s.username,
+    s.real_name,
+    s.class_name,
+    ak.key                                  AS bound_key,
+    ak.course_name                          AS bound_course,
+    COALESCE(ss.total_sessions, 0)::BIGINT  AS total_sessions,
+    COALESCE(ss.total_duration_ms, 0)::BIGINT AS total_duration_ms,
+    (COALESCE(ss.total_right, 0) + COALESCE(ss.total_wrong, 0))::BIGINT AS total_words,
+    COALESCE(ss.total_right, 0)::BIGINT    AS right_words,
+    COALESCE(ss.total_wrong, 0)::BIGINT     AS wrong_words,
+    CASE
+      WHEN COALESCE(ss.total_right, 0) + COALESCE(ss.total_wrong, 0) > 0
+      THEN ROUND(
+        COALESCE(ss.total_right, 0)::NUMERIC /
+        (COALESCE(ss.total_right, 0) + COALESCE(ss.total_wrong, 0))::NUMERIC * 100,
+        1
+      )
+      ELSE 0
+    END                                     AS accuracy_pct,
+    COALESCE(ss.last_active, s.last_active) AS last_active
+  FROM students s
+  LEFT JOIN access_keys ak ON ak.id = s.bound_key_id
+  LEFT JOIN session_stats ss ON ss.student_id = s.id
+  WHERE s.bound_key_id IS NOT NULL
+     OR COALESCE(ss.total_sessions, 0) > 0
+  ORDER BY s.real_name;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- ── 17. 学生画像（按模块细分）──
+CREATE OR REPLACE FUNCTION get_admin_students_profile()
+RETURNS TABLE (
+  student_id          TEXT,
+  username            TEXT,
+  real_name           TEXT,
+  class_name          TEXT,
+  bound_key           TEXT,
+  bound_course        TEXT,
+  module_id           TEXT,
+  module_name         TEXT,
+  total_answers       BIGINT,
+  correct_answers     BIGINT,
+  accuracy_pct        NUMERIC,
+  practiced_items     BIGINT,
+  total_items         BIGINT,
+  unpracticed_items   BIGINT,
+  progress_pct        NUMERIC,
+  total_duration_ms   BIGINT,
+  today_duration_ms   BIGINT,
+  last_active         TIMESTAMPTZ,
+  behavior_type       TEXT
+) AS $$
+BEGIN
+  RETURN QUERY
+  WITH module_totals AS (
+    SELECT 'synonym'::TEXT AS module_id, 157::BIGINT AS total_groups, 732::BIGINT AS total_items
+    UNION ALL
+    SELECT 'sentence'::TEXT, 0::BIGINT, 0::BIGINT
+  ),
+  student_module_stats AS (
+    SELECT
+      e.student_id,
+      e.module_id,
+      COUNT(*) FILTER (WHERE e.event_type = 'answer') AS total_answers,
+      COUNT(*) FILTER (WHERE e.event_type = 'answer' AND (e.payload->>'correct')::boolean = true) AS correct_answers,
+      COUNT(DISTINCT e.item_key) AS practiced_items,
+      COALESCE(SUM((e.payload->>'responseMs')::BIGINT) FILTER (WHERE e.event_type = 'answer'), 0) AS total_duration_ms,
+      COALESCE(SUM((e.payload->>'responseMs')::BIGINT) FILTER (WHERE e.event_type = 'answer' AND e.created_at::DATE = CURRENT_DATE), 0) AS today_duration_ms,
+      MAX(e.created_at) AS last_active,
+      CASE
+        WHEN COUNT(*) FILTER (WHERE e.event_type = 'answer') = 0 THEN NULL
+        WHEN AVG((e.payload->>'responseMs')::NUMERIC) FILTER (WHERE e.event_type = 'answer') < 2000
+         AND COUNT(*) FILTER (WHERE e.event_type = 'answer' AND (e.payload->>'correct')::boolean = false)::NUMERIC /
+             NULLIF(COUNT(*) FILTER (WHERE e.event_type = 'answer'), 0) > 0.3
+        THEN 'impulsive'
+        WHEN AVG((e.payload->>'responseMs')::NUMERIC) FILTER (WHERE e.event_type = 'answer') >= 3000
+         AND COUNT(*) FILTER (WHERE e.event_type = 'answer' AND (e.payload->>'correct')::boolean = false)::NUMERIC /
+             NULLIF(COUNT(*) FILTER (WHERE e.event_type = 'answer'), 0) <= 0.1
+        THEN 'cautious'
+        ELSE 'balanced'
+      END AS behavior_type
+    FROM practice_events e
+    GROUP BY e.student_id, e.module_id
+  )
+  SELECT
+    s.id                          AS student_id,
+    s.username,
+    s.real_name,
+    s.class_name,
+    ak.key                        AS bound_key,
+    ak.course_name                AS bound_course,
+    mt.module_id                  AS module_id,
+    CASE mt.module_id
+      WHEN 'synonym' THEN '同义替换大挑战'
+      WHEN 'sentence' THEN '长难句解析'
+      ELSE mt.module_id
+    END                           AS module_name,
+    COALESCE(sms.total_answers, 0)::BIGINT    AS total_answers,
+    COALESCE(sms.correct_answers, 0)::BIGINT  AS correct_answers,
+    CASE WHEN COALESCE(sms.total_answers, 0) > 0
+      THEN ROUND(COALESCE(sms.correct_answers, 0)::NUMERIC / NULLIF(sms.total_answers, 0) * 100, 1)
+      ELSE 0
+    END                           AS accuracy_pct,
+    COALESCE(sms.practiced_items, 0)::BIGINT  AS practiced_items,
+    mt.total_items::BIGINT,
+    GREATEST(mt.total_items - COALESCE(sms.practiced_items, 0), 0)::BIGINT AS unpracticed_items,
+    CASE WHEN mt.total_items > 0
+      THEN ROUND(LEAST(COALESCE(sms.practiced_items, 0)::NUMERIC / mt.total_items * 100, 100), 1)
+      ELSE 0
+    END                           AS progress_pct,
+    COALESCE(sms.total_duration_ms, 0)::BIGINT  AS total_duration_ms,
+    COALESCE(sms.today_duration_ms, 0)::BIGINT  AS today_duration_ms,
+    COALESCE(sms.last_active, s.last_active)     AS last_active,
+    sms.behavior_type
+  FROM students s
+  LEFT JOIN access_keys ak ON ak.id = s.bound_key_id
+  CROSS JOIN module_totals mt
+  LEFT JOIN student_module_stats sms ON sms.student_id = s.id AND sms.module_id = mt.module_id
+  WHERE mt.total_items > 0
+     OR COALESCE(sms.total_answers, 0) > 0
+  ORDER BY s.real_name, mt.module_id;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
