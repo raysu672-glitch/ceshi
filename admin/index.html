@@ -806,6 +806,8 @@
 
   // ── Students / Synonym Stats ──
   let _synonymStats = [];
+  let _sortCol = 'lastActive';   // 默认按最后活跃
+  let _sortDir = 'desc';         // 默认从新到旧
 
   async function loadStudents() {
     // 使用同义替换专项统计
@@ -851,6 +853,16 @@
     return Math.floor(sec / 3600) + '小时' + Math.floor((sec % 3600) / 60) + '分';
   }
 
+  function sortSynonymTable(col) {
+    if (_sortCol === col) {
+      _sortDir = _sortDir === 'desc' ? 'asc' : 'desc';
+    } else {
+      _sortCol = col;
+      _sortDir = 'desc';
+    }
+    renderSynonymTable();
+  }
+
   function renderSynonymTable() {
     const container = document.getElementById('synonymTable');
     const searchVal = (document.getElementById('studentSearch')?.value || '').trim().toLowerCase();
@@ -876,21 +888,58 @@
       return;
     }
 
+    // Sort
+    rows.sort((a, b) => {
+      let va, vb;
+      if (_sortCol === 'lastActive') {
+        va = a.lastActive ? new Date(a.lastActive).getTime() : 0;
+        vb = b.lastActive ? new Date(b.lastActive).getTime() : 0;
+      } else if (_sortCol === 'totalDurationMs') {
+        va = a.totalDurationMs || 0; vb = b.totalDurationMs || 0;
+      } else if (_sortCol === 'totalWords') {
+        va = a.totalWords || 0; vb = b.totalWords || 0;
+      } else if (_sortCol === 'rightWords') {
+        va = a.rightWords || 0; vb = b.rightWords || 0;
+      } else if (_sortCol === 'accuracyPct') {
+        va = a.totalWords > 0 ? a.rightWords / a.totalWords : 0;
+        vb = b.totalWords > 0 ? b.rightWords / b.totalWords : 0;
+      } else if (_sortCol === 'realName') {
+        va = a.realName || ''; vb = b.realName || '';
+        return _sortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va);
+      }
+      return _sortDir === 'asc' ? va - vb : vb - va;
+    });
+
     // Calculate column widths for stats
-    const maxDuration = Math.max(...rows.map(r => r.totalDurationMs));
-    const maxWords = Math.max(...rows.map(r => r.totalWords));
+    const maxDuration = Math.max(...rows.map(r => r.totalDurationMs || 0));
+    const maxWords = Math.max(...rows.map(r => r.totalWords || 0));
+
+    // Sortable header helper
+    const thStyle = 'cursor:pointer;user-select:none;white-space:nowrap;';
+    const arrow = (col) => {
+      if (_sortCol !== col) return ' <span style="opacity:0.3;font-size:10px;">↕</span>';
+      return _sortDir === 'desc'
+        ? ' <span style="color:var(--gold);font-size:10px;">↓</span>'
+        : ' <span style="color:var(--gold);font-size:10px;">↑</span>';
+    };
 
     let html = `<table class="data-table">
       <thead><tr>
-        <th>姓名</th><th>用户名</th><th>班级</th>
-        <th>总训练时长</th><th>练习词数</th><th>找对词数</th><th>正确率</th><th>最后活跃</th>
+        <th style="${thStyle}" onclick="sortSynonymTable('realName')">姓名${arrow('realName')}</th>
+        <th>用户名</th>
+        <th>班级</th>
+        <th style="${thStyle}" onclick="sortSynonymTable('totalDurationMs')">总训练时长${arrow('totalDurationMs')}</th>
+        <th style="${thStyle}" onclick="sortSynonymTable('totalWords')">练习词数${arrow('totalWords')}</th>
+        <th style="${thStyle}" onclick="sortSynonymTable('rightWords')">找对词数${arrow('rightWords')}</th>
+        <th style="${thStyle}" onclick="sortSynonymTable('accuracyPct')">正确率${arrow('accuracyPct')}</th>
+        <th style="${thStyle}" onclick="sortSynonymTable('lastActive')">最后活跃${arrow('lastActive')}</th>
       </tr></thead><tbody>`;
 
-    rows.forEach(r => {
+    rows.forEach((r, idx) => {
       const accuracyPct = r.totalWords > 0 ? Math.round(r.rightWords / r.totalWords * 100) : 0;
       const accColor = accuracyPct >= 80 ? 'var(--green)' : accuracyPct >= 60 ? 'var(--gold)' : 'var(--red)';
       const lastActive = r.lastActive
-        ? new Date(r.lastActive).toLocaleString('zh-CN', { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' })
+        ? new Date(r.lastActive).toLocaleString('zh-CN', { year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' })
         : '—';
 
       html += `<tr>
@@ -900,7 +949,7 @@
         <td>
           <div style="display:flex;align-items:center;gap:8px;">
             <div style="flex:1;height:8px;background:rgba(255,255,255,0.06);border-radius:4px;overflow:hidden;max-width:100px;">
-              <div style="width:${maxDuration > 0 ? Math.round(r.totalDurationMs / maxDuration * 100) : 0}%;height:100%;background:var(--purple);border-radius:4px;"></div>
+              <div style="width:${maxDuration > 0 ? Math.round((r.totalDurationMs||0) / maxDuration * 100) : 0}%;height:100%;background:var(--purple);border-radius:4px;"></div>
             </div>
             <span style="font-size:12px;color:var(--text-dim);min-width:50px;">${formatDuration(r.totalDurationMs)}</span>
           </div>
@@ -915,7 +964,7 @@
             <span style="font-size:12px;color:${accColor};font-weight:600;min-width:36px;">${accuracyPct}%</span>
           </div>
         </td>
-        <td style="font-size:11px;color:var(--text-dimmer);">${lastActive}</td>
+        <td style="font-size:12px;color:var(--text-dim);">${lastActive}</td>
       </tr>`;
     });
 
